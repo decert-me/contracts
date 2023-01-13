@@ -1,0 +1,20 @@
+[
+  "constructor()",
+  "event Claimed(uint256 indexed,address indexed)",
+  "event Donation(address,address,uint256)",
+  "event Initialized(uint8)",
+  "event OwnershipTransferred(address indexed,address indexed)",
+  "event SignerChanged(address)",
+  "function badge() view returns (address)",
+  "function claim(uint256,bytes) payable",
+  "function createQuest(tuple(uint32,uint32,uint192,string,string),bytes)",
+  "function initialize(address,address)",
+  "function owner() view returns (address)",
+  "function quest() view returns (address)",
+  "function renounceOwnership()",
+  "function setBadgeURI(uint256,string,bytes)",
+  "function setSigner(address)",
+  "function signer() view returns (address)",
+  "function startTokenId() view returns (uint256)",
+  "function transferOwnership(address)"
+]

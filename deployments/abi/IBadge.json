@@ -1,0 +1,7 @@
+[
+  "function create(address,uint256,uint256,string,bytes) returns (uint256)",
+  "function exists(uint256) view returns (bool)",
+  "function mint(address,uint256,uint256,bytes)",
+  "function setCustomURI(uint256,string)",
+  "function tokenSupply(uint256) view returns (uint256)"
+]
