@@ -21,6 +21,7 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
     event Claimed(uint256 indexed tokenId, address indexed sender);
     event SignerChanged(address signer);
     event Donation(address from, address to, uint256 amount);
+    event Airdroped(uint256 indexed tokenId, address indexed to);
 
     constructor() {}
 
@@ -117,6 +118,49 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
             address creator = quest.ownerOf(tokenId);
             payable(creator).transfer(msg.value);
             emit Donation(msg.sender, creator, msg.value);
+        }
+    }
+
+    function airdropBadge(
+        uint256 tokenId,
+        address[] calldata receivers,
+        bytes calldata signature
+    ) external {
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                "airdropBadge",
+                tokenId,
+                address(badge),
+                address(msg.sender)
+            )
+        );
+
+        require(_verify(hash, signature), "Invalid signer");
+
+        uint256 numOfReceivers = receivers.length;
+        require(numOfReceivers > 0, "Invalid receivers");
+
+        IQuest.QuestData memory questData = quest.getQuest(tokenId);
+        if (questData.supply > 0)
+            require(
+                badge.tokenSupply(tokenId) + numOfReceivers <= questData.supply,
+                "Over limit"
+            );
+
+        require(block.timestamp > questData.startTs, "Not in time");
+
+        if (questData.endTs > 0)
+            require(block.timestamp <= questData.endTs, "Not in time");
+
+        for (uint256 i = 0; i < numOfReceivers; i++) {
+            address receiver = receivers[i];
+            require(!claimed[tokenId][receiver], "Aleady claimed");
+
+            claimed[tokenId][receiver] = true;
+
+            badge.mint(receiver, tokenId, 1, "0x");
+
+            emit Airdroped(tokenId, receiver);
         }
     }
 

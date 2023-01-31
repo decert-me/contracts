@@ -1,10 +1,12 @@
 [
   "constructor()",
+  "event Airdroped(uint256 indexed,address indexed)",
   "event Claimed(uint256 indexed,address indexed)",
   "event Donation(address,address,uint256)",
   "event Initialized(uint8)",
   "event OwnershipTransferred(address indexed,address indexed)",
   "event SignerChanged(address)",
+  "function airdropBadge(uint256,address[],bytes)",
   "function badge() view returns (address)",
   "function claim(uint256,bytes) payable",
   "function createQuest(tuple(uint32,uint32,uint192,string,string),bytes)",
