@@ -1,8 +1,10 @@
 const { ethers, upgrades } = require('hardhat');
 const { use, expect } = require('chai');
-const { solidity } = require('ethereum-waffle');
+const { solidity, MockProvider } = require('ethereum-waffle');
 use(solidity);
 
+
+const provider = new MockProvider();
 
 const REVERT_MSGS = {
   'OnlyMinter': 'Only minter',
@@ -14,6 +16,7 @@ const REVERT_MSGS = {
   'OverLimit': 'Over limit',
   'NotInTime': 'Not in time',
   'InvalidSigner': 'Invalid signer',
+  'InvalidReceivers': 'Invalid receivers',
 }
 
 const INVALID_SIG = '0xbba42b3d0af3d44ce510e7b6720750510dab05d6158de272cc06f91994c9dbf02ddee04c3697120ce7ca953978aef6bfb08edeaea38567dd0079f1da7582ccb71c';
@@ -37,6 +40,10 @@ const questParams = {
 }
 
 const OneEther = ethers.utils.parseEther('1.0');
+
+function getRandomAddress() {
+  return provider.createEmptyWallet().address
+}
 
 describe('QuestMinter', async () => {
   let badgeContract;
@@ -72,6 +79,14 @@ describe('QuestMinter', async () => {
     const { tokenId, uri } = customURIData;
 
     const hash = ethers.utils.solidityKeccak256(['uint256', 'string', 'address', 'address'], [tokenId, uri, badgeContract.address, sender.address]);
+    const signature = await signer.signMessage(ethers.utils.arrayify(hash));
+    return signature;
+  }
+
+  async function genAirdropBadgeSig(params, sender, signer) {
+    const { tokenId } = params;
+    const hash = ethers.utils.solidityKeccak256(['string', 'uint256', 'address', 'address'], ['airdropBadge', tokenId, badgeContract.address, sender.address]);
+
     const signature = await signer.signMessage(ethers.utils.arrayify(hash));
     return signature;
   }
@@ -390,4 +405,172 @@ describe('QuestMinter', async () => {
         .withArgs(claimer.address, creator.address, OneEther.toString());
     });
   })
+
+  describe('airdropBadge()', () => {
+    let { questData } = questParams;
+
+    let creator;
+    let caller;
+    let claimer;
+    let claimSig = '';
+    let airdropBadgeSig = '';
+    const receiver1 = getRandomAddress();
+    const receiver2 = getRandomAddress();
+
+    before(async () => {
+      signer = owner;
+      caller = accounts[9]; // 任意
+
+      airdropBadgeSig = await genAirdropBadgeSig({ 'tokenId': InitStartTokenId }, caller, signer);
+
+      creator = accounts[2];
+      createQuestSig = await genCreateSig(questData, creator, signer);
+
+      claimer = accounts[3];
+      claimSig = await genClaimSig({ 'tokenId': InitStartTokenId }, claimer, signer);
+    })
+
+    it('should succeed when single address', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+
+      const receivers = [receiver1];
+      await questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig);
+
+      let balance1 = await badgeContract.balanceOf(receiver1, InitStartTokenId);
+      let tokenSupply = await badgeContract.tokenSupply(InitStartTokenId);
+
+      expect(balance1).to.equal(1);
+      expect(tokenSupply).to.equal(1);
+    });
+
+    it('should airdrop when batch address', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+
+      const receivers = [receiver1, receiver2];
+      await questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig);
+
+      let balance1 = await badgeContract.balanceOf(receiver1, InitStartTokenId);
+      let balance2 = await badgeContract.balanceOf(receiver2, InitStartTokenId);
+      let tokenSupply = await badgeContract.tokenSupply(InitStartTokenId);
+
+      expect(balance1).to.equal(1);
+      expect(balance2).to.equal(1);
+      expect(tokenSupply).to.equal(2);
+    });
+
+    it('should failed when none address', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+
+      const receivers = [];
+      await expect(
+        questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig)
+      ).to.be.revertedWith(REVERT_MSGS['InvalidReceivers']);
+    });
+
+    it('should failed with invalid signer', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+
+      const receivers = [receiver1];
+      await expect(
+        questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, INVALID_SIG)
+      ).to.be.revertedWith(REVERT_MSGS['InvalidSigner']);
+    });
+
+    it('should emit a Airdroped event', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+
+      const receivers = [receiver1];
+      await expect(
+        questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig)
+      ).to.emit(questMinterContract, 'Airdroped')
+        .withArgs(InitStartTokenId, receivers[0]);
+    });
+
+    it('should revert "Over limit" when claimed to much', async () => {
+      const questData_ = Object.assign({}, questData);
+      questData_.supply = 1; // only supply 1
+      let createQuestSig = await genCreateSig(questData_, creator, signer);
+      await questMinterContract.connect(creator).createQuest(questData_, createQuestSig);
+
+      // airdrop1
+      await questMinterContract.connect(caller).airdropBadge(InitStartTokenId, [receiver1], airdropBadgeSig);
+
+      // second should exceed limit
+      await expect(
+        questMinterContract.connect(caller).airdropBadge(InitStartTokenId, [receiver2], airdropBadgeSig)
+      ).to.revertedWith(REVERT_MSGS['OverLimit']);
+    });
+
+    it('should revert "Not in time" when now > endTs', async () => {
+      const endTs = Math.floor(new Date().getTime() / 1000) - 10;
+
+      const questData_ = Object.assign({}, questData);
+      questData_.endTs = endTs;
+      let createQuestSig = await genCreateSig(questData_, creator, signer);
+
+      await questMinterContract.connect(creator).createQuest(questData_, createQuestSig);
+
+      await expect(
+        questMinterContract.connect(caller).airdropBadge(InitStartTokenId, [receiver1], airdropBadgeSig)
+      ).to.revertedWith(REVERT_MSGS['NotInTime']);
+    });
+
+    it('should revert "Not in time" when  now < startTs', async () => {
+      const startTs = Math.floor(new Date().getTime() / 1000) + 60;
+
+      const questData_ = Object.assign({}, questData);
+      questData_.startTs = startTs;
+      let createQuestSig = await genCreateSig(questData_, creator, signer);
+
+      await questMinterContract.connect(creator).createQuest(questData_, createQuestSig);
+
+      await expect(
+        questMinterContract.connect(caller).airdropBadge(InitStartTokenId, [receiver1], airdropBadgeSig)
+      ).to.revertedWith(REVERT_MSGS['NotInTime']);
+    });
+
+    it('should succeed when in time', async () => {
+      const startTs = Math.floor(new Date().getTime() / 1000) - 30;
+      const endTs = Math.floor(new Date().getTime() / 1000) + 30;
+
+      const questData_ = Object.assign({}, questData);
+      questData_.startTs = startTs;
+      questData_.endTs = endTs;
+      let createQuestSig = await genCreateSig(questData_, creator, signer);
+
+      await questMinterContract.connect(creator).createQuest(questData_, createQuestSig);
+
+      await questMinterContract.connect(caller).airdropBadge(InitStartTokenId, [receiver1], airdropBadgeSig)
+
+      let balance = await badgeContract.balanceOf(receiver1, InitStartTokenId);
+      expect(balance).to.equal(1);
+    });
+
+    it('should revert "Aleady claimed" when has claimed before', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+
+      // first
+      await questMinterContract.connect(claimer).claim(InitStartTokenId, claimSig);
+
+      //second
+      const receivers = [claimer.address, receiver2];
+      await expect(
+        questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig)
+      ).to.revertedWith(REVERT_MSGS['AleadyClaimed']);
+    });
+
+    it('should revert "Aleady claimed" when has airdrop before', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+
+      // first
+      let receivers = [receiver1, receiver2];
+      await questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig)
+
+      // second
+      receivers = [receiver2];
+      await expect(
+        questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig)
+      ).to.revertedWith(REVERT_MSGS['AleadyClaimed']);
+    });
+  });
 });
