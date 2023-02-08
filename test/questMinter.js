@@ -69,8 +69,8 @@ describe('QuestMinter', async () => {
   }
 
   async function genClaimSig(claimData, sender, signer) {
-    const { tokenId } = claimData;
-    const hash = ethers.utils.solidityKeccak256(['uint256', 'address', 'address'], [tokenId, badgeContract.address, sender.address]);
+    const { tokenId, score } = claimData;
+    const hash = ethers.utils.solidityKeccak256(['uint256', 'uint256', 'address', 'address'], [tokenId, score, badgeContract.address, sender.address]);
     const signature = await signer.signMessage(ethers.utils.arrayify(hash));
     return signature;
   }
@@ -264,6 +264,7 @@ describe('QuestMinter', async () => {
     let claimer2;
     let claimSig = '';
     let claimSig2 = '';
+    let score = 80;
 
     before(async () => {
       signer = owner;
@@ -272,24 +273,26 @@ describe('QuestMinter', async () => {
 
       claimer = accounts[3];
       claimer2 = accounts[4];
-      claimSig = await genClaimSig({ 'tokenId': InitStartTokenId }, claimer, signer);
-      claimSig2 = await genClaimSig({ 'tokenId': InitStartTokenId }, claimer2, signer);
+      claimSig = await genClaimSig({ 'tokenId': InitStartTokenId, 'score': score }, claimer, signer);
+      claimSig2 = await genClaimSig({ 'tokenId': InitStartTokenId, 'score': score }, claimer2, signer);
     })
 
     it('should claim succeed', async () => {
       await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
 
-      await questMinterContract.connect(claimer).claim(InitStartTokenId, claimSig);
+      await questMinterContract.connect(claimer).claim(InitStartTokenId, score, claimSig);
 
       let balance = await badgeContract.balanceOf(claimer.address, InitStartTokenId);
+      let _score = await questMinterContract.scores(InitStartTokenId, claimer.address);
       expect(balance).to.equal(1);
+      expect(_score).to.equal(score);
     });
 
     it('should emit a Claimed event', async () => {
       await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
 
       await expect(
-        questMinterContract.connect(claimer).claim(InitStartTokenId, claimSig)
+        questMinterContract.connect(claimer).claim(InitStartTokenId, score, claimSig)
       ).to.emit(questMinterContract, 'Claimed')
         .withArgs(InitStartTokenId, claimer.address);
     });
@@ -298,11 +301,11 @@ describe('QuestMinter', async () => {
       await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
 
       // first
-      await questMinterContract.connect(claimer).claim(InitStartTokenId, claimSig);
+      await questMinterContract.connect(claimer).claim(InitStartTokenId, score, claimSig);
 
       //second
       await expect(
-        questMinterContract.connect(claimer).claim(InitStartTokenId, claimSig)
+        questMinterContract.connect(claimer).claim(InitStartTokenId, score, claimSig)
       ).to.revertedWith(REVERT_MSGS['AleadyClaimed']);
     });
 
@@ -313,10 +316,10 @@ describe('QuestMinter', async () => {
       await questMinterContract.connect(creator).createQuest(questData_, createQuestSig);
 
       // claim1
-      await questMinterContract.connect(claimer).claim(InitStartTokenId, claimSig);
+      await questMinterContract.connect(claimer).claim(InitStartTokenId, score, claimSig);
 
       await expect(
-        questMinterContract.connect(claimer2).claim(InitStartTokenId, claimSig2)
+        questMinterContract.connect(claimer2).claim(InitStartTokenId, score, claimSig2)
       ).to.revertedWith(REVERT_MSGS['OverLimit']);
     });
 
@@ -330,7 +333,7 @@ describe('QuestMinter', async () => {
       await questMinterContract.connect(creator).createQuest(questData_, createQuestSig);
 
       await expect(
-        questMinterContract.connect(claimer).claim(InitStartTokenId, claimSig)
+        questMinterContract.connect(claimer).claim(InitStartTokenId, score, claimSig)
       ).to.revertedWith(REVERT_MSGS['NotInTime']);
     });
 
@@ -344,7 +347,7 @@ describe('QuestMinter', async () => {
       await questMinterContract.connect(creator).createQuest(questData_, createQuestSig);
 
       await expect(
-        questMinterContract.connect(claimer).claim(InitStartTokenId, claimSig)
+        questMinterContract.connect(claimer).claim(InitStartTokenId, score, claimSig)
       ).to.revertedWith(REVERT_MSGS['NotInTime']);
     });
 
@@ -359,7 +362,7 @@ describe('QuestMinter', async () => {
 
       await questMinterContract.connect(creator).createQuest(questData_, createQuestSig);
 
-      await questMinterContract.connect(claimer).claim(InitStartTokenId, claimSig);
+      await questMinterContract.connect(claimer).claim(InitStartTokenId, score, claimSig);
 
       let balance = await badgeContract.balanceOf(claimer.address, InitStartTokenId);
       expect(balance).to.equal(1);
@@ -373,6 +376,7 @@ describe('QuestMinter', async () => {
     let createQuestSig = '';
     let claimer;
     let claimSig = '';
+    let score = 0;
 
     before(async () => {
       signer = owner;
@@ -380,7 +384,7 @@ describe('QuestMinter', async () => {
       createQuestSig = await genCreateSig(questData, creator, signer);
 
       claimer = accounts[3];
-      claimSig = await genClaimSig({ 'tokenId': InitStartTokenId }, claimer, signer);
+      claimSig = await genClaimSig({ 'tokenId': InitStartTokenId, 'score': score }, claimer, signer);
     })
 
     it('creator should receive eth after donation', async () => {
@@ -388,7 +392,7 @@ describe('QuestMinter', async () => {
 
       const beforeBalance = await ethers.provider.getBalance(creator.address);
 
-      await questMinterContract.connect(claimer).claim(InitStartTokenId, claimSig, { value: OneEther });
+      await questMinterContract.connect(claimer).claim(InitStartTokenId, score, claimSig, { value: OneEther });
 
       const afterBalance = await ethers.provider.getBalance(creator.address);
       const gap = afterBalance.sub(beforeBalance);
@@ -400,9 +404,68 @@ describe('QuestMinter', async () => {
       await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
 
       await expect(
-        questMinterContract.connect(claimer).claim(InitStartTokenId, claimSig, { value: OneEther })
+        questMinterContract.connect(claimer).claim(InitStartTokenId, score, claimSig, { value: OneEther })
       ).to.emit(questMinterContract, 'Donation')
         .withArgs(claimer.address, creator.address, OneEther.toString());
+    });
+  })
+
+  describe('updateScore()', () => {
+    let { questData, signature } = questParams;
+
+    let creator;
+    let createQuestSig = '';
+    let claimer;
+    let claimer2;
+    let claimSig = '';
+    let claimSig2 = '';
+    let score = 80;
+    let score2 = 90;
+    before(async () => {
+      signer = owner;
+      creator = accounts[2];
+      createQuestSig = await genCreateSig(questData, creator, signer);
+
+      claimer = accounts[3];
+      claimer2 = accounts[4];
+      claimSig = await genClaimSig({ 'tokenId': InitStartTokenId, 'score': score }, claimer, signer);
+      claimSig2 = await genClaimSig({ 'tokenId': InitStartTokenId, 'score': score2 }, claimer, signer);
+    })
+
+    it('should update score succeed', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+
+      await questMinterContract.connect(claimer).claim(InitStartTokenId, score, claimSig);
+      let _score = await questMinterContract.scores(InitStartTokenId, claimer.address);
+      expect(_score).to.equal(score);
+
+      await questMinterContract.connect(claimer).updateScore(InitStartTokenId, score2, claimSig2);
+      let _score2 = await questMinterContract.scores(InitStartTokenId, claimer.address);
+      expect(_score2).to.equal(score2);
+    });
+
+    it('should revert "Invalid signer"', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+      await questMinterContract.connect(claimer).claim(InitStartTokenId, score, claimSig);
+
+      await expect(
+        questMinterContract.connect(claimer).updateScore(InitStartTokenId, score2, INVALID_SIG)
+      ).to.revertedWith(REVERT_MSGS['InvalidSigner']);
+    });
+
+    it('should revert "Not in time" when now > endTs', async () => {
+      const endTs = Math.floor(new Date().getTime() / 1000) + 100;
+
+      const questData_ = Object.assign({}, questData);
+      questData_.endTs = endTs;
+      createQuestSig = await genCreateSig(questData_, creator, signer);
+
+      await questMinterContract.connect(creator).createQuest(questData_, createQuestSig);
+      await questMinterContract.connect(claimer).claim(InitStartTokenId, score, claimSig);
+      await network.provider.send("evm_increaseTime", [3600]) // add time
+      await expect(
+        questMinterContract.connect(claimer).updateScore(InitStartTokenId, score2, claimSig2)
+      ).to.revertedWith(REVERT_MSGS['NotInTime']);
     });
   })
 
@@ -414,6 +477,7 @@ describe('QuestMinter', async () => {
     let claimer;
     let claimSig = '';
     let airdropBadgeSig = '';
+    let score = 0;
     const receiver1 = getRandomAddress();
     const receiver2 = getRandomAddress();
 
@@ -427,7 +491,7 @@ describe('QuestMinter', async () => {
       createQuestSig = await genCreateSig(questData, creator, signer);
 
       claimer = accounts[3];
-      claimSig = await genClaimSig({ 'tokenId': InitStartTokenId }, claimer, signer);
+      claimSig = await genClaimSig({ 'tokenId': InitStartTokenId, 'score': score }, claimer, signer);
     })
 
     it('should succeed when single address', async () => {
@@ -550,7 +614,7 @@ describe('QuestMinter', async () => {
       await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
 
       // first
-      await questMinterContract.connect(claimer).claim(InitStartTokenId, claimSig);
+      await questMinterContract.connect(claimer).claim(InitStartTokenId, score, claimSig);
 
       //second
       const receivers = [claimer.address, receiver2];

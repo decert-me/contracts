@@ -17,6 +17,7 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
     address public signer;
 
     mapping(uint256 => mapping(address => bool)) claimed;
+    mapping(uint256 => mapping(address => uint256)) public scores;
 
     event Claimed(uint256 indexed tokenId, address indexed sender);
     event SignerChanged(address signer);
@@ -89,7 +90,7 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
         badge.setCustomURI(tokenId, uri);
     }
 
-    function claim(uint256 tokenId, bytes calldata signature) external payable {
+    function claim(uint256 tokenId, uint256 score, bytes calldata signature) external payable {
         require(!claimed[tokenId][msg.sender], "Aleady claimed");
 
         IQuest.QuestData memory questData = quest.getQuest(tokenId);
@@ -104,7 +105,7 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
             require(block.timestamp <= questData.endTs, "Not in time");
 
         bytes32 hash = keccak256(
-            abi.encodePacked(tokenId, address(badge), address(msg.sender))
+            abi.encodePacked(tokenId, score, address(badge), address(msg.sender))
         );
         require(_verify(hash, signature), "Invalid signer");
 
@@ -119,6 +120,23 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
             payable(creator).transfer(msg.value);
             emit Donation(msg.sender, creator, msg.value);
         }
+
+        scores[tokenId][msg.sender] = score;
+    }
+
+    function updateScore(uint256 tokenId, uint256 score, bytes calldata signature)external{
+        require(claimed[tokenId][msg.sender], "not claimed yet");
+        
+        IQuest.QuestData memory questData = quest.getQuest(tokenId);
+        if (questData.endTs > 0)
+            require(block.timestamp <= questData.endTs, "Not in time");
+
+        bytes32 hash = keccak256(
+            abi.encodePacked(tokenId, score, address(badge), address(msg.sender))
+        );
+        require(_verify(hash, signature), "Invalid signer");
+
+        scores[tokenId][msg.sender] = score;
     }
 
     function airdropBadge(
