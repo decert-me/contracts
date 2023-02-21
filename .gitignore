@@ -4,3 +4,5 @@ artifacts
 deployments/localhost
 cache
 .openzeppelin
+coverage.json
+/coverage

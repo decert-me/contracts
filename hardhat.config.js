@@ -5,7 +5,7 @@ require("@nomiclabs/hardhat-etherscan");
 require('@openzeppelin/hardhat-upgrades');
 require('hardhat-abi-exporter');
 require("@nomiclabs/hardhat-solhint");
-
+require('solidity-coverage')
 
 const defaultNetwork = "localhost";
 const mnemonic = process.env.MNEMONIC

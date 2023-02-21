@@ -9,7 +9,8 @@
     "eslint-config-airbnb": "^18.2.0",
     "eslint-config-prettier": "^6.11.0",
     "eslint-plugin-babel": "^5.3.1",
-    "eslint-plugin-prettier": "^3.1.4"
+    "eslint-plugin-prettier": "^3.1.4",
+    "solidity-coverage": "^0.8.2"
   },
   "dependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
@@ -30,6 +31,7 @@
     "chain": "hardhat node",
     "test": "hardhat test --network hardhat",
     "compile": "hardhat compile",
-    "deploy": "hardhat run scripts/deploy_and_init.js"
+    "deploy": "hardhat run scripts/deploy_and_init.js",
+    "coverage": "hardhat coverage --network hardhat"
   }
 }
