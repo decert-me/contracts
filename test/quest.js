@@ -11,6 +11,7 @@ const REVERT_MSGS = {
   'AlreadyMinted': 'ERC721: token already minted',
   'NonexistentTokenUri': 'ERC721Metadata: URI query for nonexistent token',
   'SBTNonTransferable': 'SBT:non-transferable',
+  'NoneExistentToken':'None existent token',
 }
 
 async function revertBlock(snapshotId) {
@@ -37,6 +38,13 @@ const mintParams = {
   'data': '0x',
 }
 
+const createParams = {
+  'creator': provider.createEmptyWallet().address,
+  'id': 0,
+  'initialSupply': 1,
+  'uri': 'ipfs://123',
+  'data': '0x',
+}
 
 describe("Quest", async () => {
   let questContract;
@@ -63,6 +71,7 @@ describe("Quest", async () => {
 
     // set minter
     await questContract.setMinter(minter.address, true);
+    await badgeContract.setMinter(minter.address, true);
 
     snapshotId = await ethers.provider.send("evm_snapshot");
   })
@@ -107,6 +116,11 @@ describe("Quest", async () => {
   })
 
   describe('mint()', async () => {
+    beforeEach(async () => {
+      let { creator, id, initialSupply, uri, data } = createParams;
+      await badgeContract.connect(minter).create(creator, id, initialSupply, uri, data)
+    });
+
     it("not minter should revert", async () => {
       let { to, id, questData, data } = mintParams;
 
@@ -146,9 +160,21 @@ describe("Quest", async () => {
         questContract.connect(minter).mint(to, id, questData, data)
       ).to.be.revertedWith(REVERT_MSGS['AlreadyMinted']);
     });
+
+    it("mint none existent token should revert", async () => {
+      let { to, questData, data } = mintParams;
+      await expect(
+        questContract.connect(minter).mint(to, 1, questData, data)
+      ).to.be.revertedWith(REVERT_MSGS['NoneExistentToken']);
+    }); 
   })
 
   describe('getQuest()', async () => {
+    beforeEach(async () => {
+      let { creator, id, initialSupply, uri, data } = createParams;
+      await badgeContract.connect(minter).create(creator, id, initialSupply, uri, data)
+    });
+
     it("None existent quest", async () => {
       const questData = await questContract.quests(1);
       const { startTs, endTs, supply, title, uri } = questData;
@@ -174,6 +200,11 @@ describe("Quest", async () => {
   })
 
   describe('tokenURI()', async () => {
+    beforeEach(async () => {
+      let { creator, id, initialSupply, uri, data } = createParams;
+      await badgeContract.connect(minter).create(creator, id, initialSupply, uri, data)
+    });
+
     it("should revert NonexistentTokenUri", async () => {
       await expect(questContract.tokenURI(0)).to.be.revertedWith(REVERT_MSGS['NonexistentTokenUri']);
     });
@@ -188,6 +219,11 @@ describe("Quest", async () => {
   })
 
   describe('SBT', async () => {
+    beforeEach(async () => {
+      let { creator, id, initialSupply, uri, data } = createParams;
+      await badgeContract.connect(minter).create(creator, id, initialSupply, uri, data)
+    });
+
     it("non-transferable", async () => {
       let { id, to, questData, data } = mintParams;
       const receiver = accounts[3];

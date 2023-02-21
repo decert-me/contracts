@@ -53,6 +53,8 @@ contract Quest is IQuest, SBTBase, OwnableUpgradeable {
         QuestData calldata questData,
         bytes memory data
     ) external override onlyMinter {
+        require(badge.exists(tokenId), "None existent token");
+
         _mint(to, tokenId);
         totalSupply += 1;
 
@@ -74,6 +76,11 @@ contract Quest is IQuest, SBTBase, OwnableUpgradeable {
         override
         onlyMinter
     {
+        require(
+            _exists(tokenId),
+            "ERC721Metadata: URI query for nonexistent token"
+        );
+
         QuestData storage questData = quests[tokenId];
         questData.uri = uri;
     }

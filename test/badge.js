@@ -9,6 +9,7 @@ const REVERT_MSGS = {
   'OnlyMinter': 'Only minter',
   'TokenIdAlreadyExists': 'TokenId already exists',
   'AlreadyHoldsBadge': 'Already holds badge',
+  'NoneExistentToken':'None existent token',
 }
 
 async function revertBlock(snapshotId) {
@@ -145,13 +146,17 @@ describe("Badge", async () => {
   })
 
   describe('mint()', async () => {
+    beforeEach(async () => {
+      let { creator, id, initialSupply, uri, data } = createParams;
+      await badgeContract.connect(minter).create(creator, id, initialSupply, uri, data);
+    });
+
     it("not minter should revert", async () => {
       let { to, id, quantity, data } = mintParams;
       await expect(badgeContract.connect(accounts[2]).mint(to, id, quantity, data)).to.be.revertedWith(REVERT_MSGS['OnlyMinter']);
     });
 
     it("minter mint", async () => {
-
       let { to, id, quantity, data } = mintParams;
       await expect(
         badgeContract.connect(minter).mint(to, id, quantity, data)
@@ -159,7 +164,7 @@ describe("Badge", async () => {
         .withArgs(minter.address, AddressZero, to, id, quantity);
 
       let tokenSupply = await badgeContract.tokenSupply(id);
-      expect(tokenSupply).to.equal(quantity);
+      expect(tokenSupply).to.equal(quantity + 1);
 
       let balance = await badgeContract.balanceOf(to, id);
       expect(balance).to.equal(quantity);
@@ -183,6 +188,15 @@ describe("Badge", async () => {
       await expect(
         badgeContract.connect(minter).mint(to, id, quantity, data)
       ).to.be.revertedWith(REVERT_MSGS['AlreadyHoldsBadge']);
+    });
+
+    it("mint none existent should revert", async () => {
+      let { to, id, quantity, data } = mintParams;
+
+      // mint again
+      await expect(
+        badgeContract.connect(minter).mint(to, 2, quantity, data)
+      ).to.be.revertedWith(REVERT_MSGS['NoneExistentToken']);
     });
   })
 
@@ -221,6 +235,15 @@ describe("Badge", async () => {
         badgeContract.connect(accounts[2]).setCustomURI(id, newURI)
       ).to.be.revertedWith(REVERT_MSGS['OnlyMinter']);
     });
+
+    it("set none existent token should revert", async () => {
+      let { id } = createParams;
+      const newURI = 'ipfs://new';
+
+      await expect(
+        badgeContract.connect(minter).setCustomURI(id, newURI)
+      ).to.be.revertedWith(REVERT_MSGS['NoneExistentToken']);
+    }); 
   });
 
   describe('exists()', async () => {

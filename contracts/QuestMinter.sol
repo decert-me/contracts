@@ -68,8 +68,8 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
             startTokenId += 1;
         }
 
-        quest.mint(msg.sender, startTokenId, questData, "0x");
         badge.create(msg.sender, startTokenId, 0, uri, "0x");
+        quest.mint(msg.sender, startTokenId, questData, "0x");
 
         startTokenId += 1;
     }
@@ -92,6 +92,7 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
 
     function claim(uint256 tokenId, uint256 score, bytes calldata signature) external payable {
         require(!claimed[tokenId][msg.sender], "Aleady claimed");
+        require(badge.exists(tokenId), "None existent token");
 
         IQuest.QuestData memory questData = quest.getQuest(tokenId);
         if (questData.supply > 0)

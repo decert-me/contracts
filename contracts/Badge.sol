@@ -96,6 +96,7 @@ contract Badge is IBadge, OwnableUpgradeable, ERC1155Upgradeable {
         bytes memory data
     ) external override onlyMinter {
         require((balanceOf(to, id) == 0), "Already holds badge");
+        require(_exists(id), "None existent token");
 
         _mint(to, id, amount, data);
         _tokenSupply[id] = _tokenSupply[id] + amount;
@@ -106,6 +107,7 @@ contract Badge is IBadge, OwnableUpgradeable, ERC1155Upgradeable {
         override
         onlyMinter
     {
+        require(_exists(id), "None existent token");
         customUri[id] = newURI;
         emit URI(newURI, id);
     }

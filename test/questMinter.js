@@ -17,6 +17,8 @@ const REVERT_MSGS = {
   'NotInTime': 'Not in time',
   'InvalidSigner': 'Invalid signer',
   'InvalidReceivers': 'Invalid receivers',
+  'NoneExistentToken': 'None existent token',
+  'InvalidTokenID': 'ERC721: invalid token ID',
 }
 
 const INVALID_SIG = '0xbba42b3d0af3d44ce510e7b6720750510dab05d6158de272cc06f91994c9dbf02ddee04c3697120ce7ca953978aef6bfb08edeaea38567dd0079f1da7582ccb71c';
@@ -253,6 +255,15 @@ describe('QuestMinter', async () => {
       let tokenUri = await badgeContract.uri(InitStartTokenId);
       expect(tokenUri).to.equal(newUri);
     });
+
+    it('should revert set new uri when token none existent', async () => {
+      const newUri = 'ipfs://new';
+      let setCustomURISig = await genSetCustomURISig({ 'tokenId': InitStartTokenId, 'uri': newUri }, creator, signer);
+
+      await expect(
+        questMinterContract.connect(creator).setBadgeURI(InitStartTokenId, newUri, setCustomURISig)
+      ).to.revertedWith(REVERT_MSGS['InvalidTokenID']);
+    });
   });
 
   describe('claim()', () => {
@@ -367,6 +378,13 @@ describe('QuestMinter', async () => {
       let balance = await badgeContract.balanceOf(claimer.address, InitStartTokenId);
       expect(balance).to.equal(1);
     });
+
+    it('should revert when claim none existent token', async () => {
+      await expect(
+        questMinterContract.connect(claimer).claim(InitStartTokenId, score, claimSig)
+      ).to.revertedWith(REVERT_MSGS['NoneExistentToken']);
+    });
+
   });
 
   describe('claim with donation', () => {
@@ -610,7 +628,7 @@ describe('QuestMinter', async () => {
       expect(balance).to.equal(1);
     });
 
-    it('should revert "Aleady claimed" when has claimed before', async () => {
+    it('should ignore when has claimed before', async () => {
       await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
 
       // first
