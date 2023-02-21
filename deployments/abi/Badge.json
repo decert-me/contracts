@@ -1,5 +1,4 @@
 [
-  "constructor()",
   "event ApprovalForAll(address indexed,address indexed,bool)",
   "event Initialized(uint8)",
   "event OwnershipTransferred(address indexed,address indexed)",

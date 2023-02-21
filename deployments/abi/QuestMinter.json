@@ -1,5 +1,4 @@
 [
-  "constructor()",
   "event Airdroped(uint256 indexed,address indexed)",
   "event Claimed(uint256 indexed,address indexed)",
   "event Donation(address,address,uint256)",
