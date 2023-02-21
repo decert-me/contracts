@@ -618,23 +618,35 @@ describe('QuestMinter', async () => {
 
       //second
       const receivers = [claimer.address, receiver2];
-      await expect(
-        questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig)
-      ).to.revertedWith(REVERT_MSGS['AleadyClaimed']);
+      await questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig);
+
+      let balanceClaimer = await badgeContract.balanceOf(claimer.address, InitStartTokenId);
+      expect(balanceClaimer).to.equal(1);
+
+      let balanceReceiver = await badgeContract.balanceOf(receiver2, InitStartTokenId);
+      expect(balanceReceiver).to.equal(1);
     });
 
-    it('should revert "Aleady claimed" when has airdrop before', async () => {
+    it('should ignore when has airdrop before', async () => {
       await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
 
       // first
       let receivers = [receiver1, receiver2];
-      await questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig)
+      await questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig);
 
       // second
       receivers = [receiver2];
+      await questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig);
+
+      let balanceReceiver = await badgeContract.balanceOf(receiver2, InitStartTokenId);
+      expect(balanceReceiver).to.equal(1);
+    });
+
+    it('should revert when airdrop none existent token', async () => {
+      let receivers = [receiver1, receiver2];
       await expect(
         questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig)
-      ).to.revertedWith(REVERT_MSGS['AleadyClaimed']);
+      ).to.revertedWith(REVERT_MSGS['NoneExistentToken']);
     });
   });
 });

@@ -172,7 +172,9 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
 
         for (uint256 i = 0; i < numOfReceivers; i++) {
             address receiver = receivers[i];
-            require(!claimed[tokenId][receiver], "Aleady claimed");
+            if(claimed[tokenId][receiver]) {
+                continue;
+            }
 
             claimed[tokenId][receiver] = true;
 
