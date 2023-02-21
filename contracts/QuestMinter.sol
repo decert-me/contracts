@@ -24,8 +24,6 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
     event Donation(address from, address to, uint256 amount);
     event Airdroped(uint256 indexed tokenId, address indexed to);
 
-    constructor() {}
-
     function initialize(address badge_, address quest_) public initializer {
         __Ownable_init();
 

@@ -33,8 +33,6 @@ contract SBTBase is
     /**
      * @dev Initializes the contract by setting a `name` and a `symbol` to the token collection.
      */
-    constructor() {}
-
     function initialize(string memory name_, string memory symbol_)
         public
         onlyInitializing

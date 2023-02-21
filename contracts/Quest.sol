@@ -24,8 +24,6 @@ contract Quest is IQuest, SBTBase, OwnableUpgradeable {
         QuestData questData
     );
 
-    constructor() {}
-
     function initialize(address badge_) public initializer {
         SBTBase.initialize("Decert Quest", "DQuest");
         __Ownable_init();

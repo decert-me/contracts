@@ -17,8 +17,6 @@ contract Badge is IBadge, OwnableUpgradeable, ERC1155Upgradeable {
     string public name;
     string public symbol;
 
-    constructor() {}
-
     function initialize(string memory uri_) public initializer {
         __Ownable_init();
         __ERC1155_init(uri_);
