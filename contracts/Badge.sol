@@ -14,14 +14,12 @@ contract Badge is IBadge, OwnableUpgradeable, ERC1155Upgradeable {
 
     event SetMinter(address minter, bool enabled);
 
-    string public name; // TODO:constant
-    string public symbol;
+    string public constant name = "Decert Badge";
+    string public constant symbol= "DBadge";
 
     function initialize(string memory uri_) public initializer {
         __Ownable_init();
         __ERC1155_init(uri_);
-        name = "Decert Badge";
-        symbol = "DBadge";
     }
 
     modifier onlyMinter() {
