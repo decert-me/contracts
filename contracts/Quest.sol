@@ -114,7 +114,7 @@ contract Quest is IQuest, SBTBase, OwnableUpgradeable {
             svg,
             '",',
             '"external_uri": "',
-            "https://decert.me/dquest/",
+            "https://decert.me/quests/",
             Strings.toString(tokenId),
             '"'
             "}"
