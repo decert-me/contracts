@@ -14,7 +14,7 @@ contract Badge is IBadge, OwnableUpgradeable, ERC1155Upgradeable {
 
     event SetMinter(address minter, bool enabled);
 
-    string public name;
+    string public name; // TODO:constant
     string public symbol;
 
     function initialize(string memory uri_) public initializer {

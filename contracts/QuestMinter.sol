@@ -39,6 +39,8 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
         emit SignerChanged(signer_);
     }
 
+    // add createQuest whitelist
+
     function createQuest(
         IQuest.QuestData calldata questData,
         bytes calldata signature
@@ -72,6 +74,7 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
         startTokenId += 1;
     }
 
+    // TODO: update title...
     function setBadgeURI(
         uint256 tokenId,
         string memory uri,
@@ -89,7 +92,7 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
     }
 
     function claim(uint256 tokenId, uint256 score, bytes calldata signature) external payable {
-        require(!claimed[tokenId][msg.sender], "Aleady claimed");
+        require(!claimed[tokenId][msg.sender], "Aleady claimed");// 删除
         require(badge.exists(tokenId), "None existent token");
 
         IQuest.QuestData memory questData = quest.getQuest(tokenId);
@@ -120,15 +123,17 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
             emit Donation(msg.sender, creator, msg.value);
         }
 
-        scores[tokenId][msg.sender] = score;
+        scores[tokenId][msg.sender] = score; //TODO: migrate to badge
     }
 
+    // TODO: 60%。。
     function updateScore(uint256 tokenId, uint256 score, bytes calldata signature)external{
         require(claimed[tokenId][msg.sender], "not claimed yet");
         
         IQuest.QuestData memory questData = quest.getQuest(tokenId);
         if (questData.endTs > 0)
             require(block.timestamp <= questData.endTs, "Not in time");
+            // TODO: if...revert error
 
         bytes32 hash = keccak256(
             abi.encodePacked(tokenId, score, address(badge), address(msg.sender))
@@ -139,7 +144,7 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
     }
 
     function airdropBadge(
-        uint256 tokenId,
+        uint256 tokenId, //TODO: tokenIds
         address[] calldata receivers,
         bytes calldata signature
     ) external {
@@ -158,7 +163,7 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
         require(numOfReceivers > 0, "Invalid receivers");
 
         IQuest.QuestData memory questData = quest.getQuest(tokenId);
-        if (questData.supply > 0)
+        if (questData.supply > 0) // TODO: big number
             require(
                 badge.tokenSupply(tokenId) + numOfReceivers <= questData.supply,
                 "Over limit"

@@ -23,7 +23,7 @@ contract Quest is IQuest, SBTBase, OwnableUpgradeable {
         uint256 indexed tokenId,
         QuestData questData
     );
-
+    // 不可升级
     function initialize(address badge_) public initializer {
         SBTBase.initialize("Decert Quest", "DQuest");
         __Ownable_init();
@@ -96,7 +96,7 @@ contract Quest is IQuest, SBTBase, OwnableUpgradeable {
 
         return generateTokenUri(tokenId);
     }
-
+    // TODO: generator contract
     function generateTokenUri(uint256 tokenId)
         internal
         view
