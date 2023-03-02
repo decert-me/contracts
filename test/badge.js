@@ -1,4 +1,4 @@
-const { ethers, upgrades } = require("hardhat");
+const { ethers } = require("hardhat");
 const { use, expect } = require("chai");
 const { solidity, MockProvider } = require("ethereum-waffle");
 use(solidity);
@@ -47,9 +47,7 @@ describe("Badge", async () => {
 
   before(async () => {
     const Badge = await ethers.getContractFactory("Badge");
-
-    const params = [uri];
-    badgeContract = await upgrades.deployProxy(Badge, params);
+    badgeContract = await Badge.deploy(uri);
     await badgeContract.deployed();
 
     accounts = await ethers.getSigners();

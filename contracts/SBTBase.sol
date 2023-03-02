@@ -3,19 +3,18 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "./interface/IERC5192.sol";
 
 /**
  * @dev Implementation of Soulbound Token[SBT]: Non-tranable Token
  */
 contract SBTBase is
-    ERC165Upgradeable,
-    IERC721Upgradeable,
-    IERC721MetadataUpgradeable,
+    ERC165,
+    IERC721,
+    IERC721Metadata,
     IERC5192
 {
     // Token name
@@ -30,36 +29,30 @@ contract SBTBase is
     // Mapping owner address to token count
     mapping(address => uint256) private _balances;
 
-    /**
-     * @dev Initializes the contract by setting a `name` and a `symbol` to the token collection.
-     */
-    function initialize(string memory name_, string memory symbol_)
-        public
-        onlyInitializing
-    {
+    constructor(string memory name_, string memory symbol_) {
         _name = name_;
         _symbol = symbol_;
     }
 
     /**
-     * @dev See {IERC165Upgradeable-supportsInterface}.
+     * @dev See {IERC165-supportsInterface}.
      */
     function supportsInterface(bytes4 interfaceId)
         public
         view
         virtual
-        override(ERC165Upgradeable, IERC165Upgradeable)
+        override(ERC165, IERC165)
         returns (bool)
     {
         return
-            interfaceId == type(IERC721Upgradeable).interfaceId ||
-            interfaceId == type(IERC721MetadataUpgradeable).interfaceId ||
+            interfaceId == type(IERC721).interfaceId ||
+            interfaceId == type(IERC721Metadata).interfaceId ||
             interfaceId == type(IERC5192).interfaceId ||
             super.supportsInterface(interfaceId);
     }
 
     /**
-     * @dev See {IERC721Upgradeable-balanceOf}.
+     * @dev See {IERC721-balanceOf}.
      */
     function balanceOf(address owner)
         public
@@ -76,7 +69,7 @@ contract SBTBase is
     }
 
     /**
-     * @dev See {IERC721Upgradeable-ownerOf}.
+     * @dev See {IERC721-ownerOf}.
      */
     function ownerOf(uint256 tokenId)
         public
@@ -91,21 +84,21 @@ contract SBTBase is
     }
 
     /**
-     * @dev See {IERC721MetadataUpgradeable-name}.
+     * @dev See {IERC721Metadata-name}.
      */
     function name() public view virtual override returns (string memory) {
         return _name;
     }
 
     /**
-     * @dev See {IERC721MetadataUpgradeable-symbol}.
+     * @dev See {IERC721Metadata-symbol}.
      */
     function symbol() public view virtual override returns (string memory) {
         return _symbol;
     }
 
     /**
-     * @dev See {IERC721MetadataUpgradeable-tokenURI} need override.
+     * @dev See {IERC721Metadata-tokenURI} need override.
      */
     function tokenURI(uint256 tokenId)
         public
@@ -163,7 +156,7 @@ contract SBTBase is
     }
 
     /**
-     * @dev See {IERC721Upgradeable-safeTransferFrom}.
+     * @dev See {IERC721-safeTransferFrom}.
      */
     function safeTransferFrom(
         address,

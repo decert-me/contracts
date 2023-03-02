@@ -95,15 +95,15 @@ describe('QuestMinter', async () => {
 
   before(async () => {
     const Badge = await ethers.getContractFactory('Badge');
-    badgeContract = await upgrades.deployProxy(Badge, [uri]);
+    badgeContract = await Badge.deploy(uri);
     await badgeContract.deployed();
 
     const Quest = await ethers.getContractFactory('Quest');
-    questContract = await upgrades.deployProxy(Quest, [badgeContract.address], { initializer: 'initialize(address)' });
+    questContract = await Quest.deploy(badgeContract.address);
     await questContract.deployed();
 
     const QuestMinter = await ethers.getContractFactory('QuestMinter');
-    questMinterContract = await upgrades.deployProxy(QuestMinter, [badgeContract.address, questContract.address]);
+    questMinterContract = await QuestMinter.deploy(badgeContract.address, questContract.address);
     await questMinterContract.deployed();
 
     InitStartTokenId = (await questMinterContract.startTokenId()).toNumber();

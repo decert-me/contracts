@@ -57,12 +57,12 @@ describe("Quest", async () => {
 
   before(async () => {
     const Badge = await ethers.getContractFactory('Badge');
-    badgeContract = await upgrades.deployProxy(Badge, [uri]);
+    badgeContract = await Badge.deploy(uri);
     await badgeContract.deployed();
 
     const Quest = await ethers.getContractFactory("Quest");
 
-    questContract = await upgrades.deployProxy(Quest, [badgeContract.address], { initializer: 'initialize(address)' });
+    questContract = await Quest.deploy(badgeContract.address);
     await questContract.deployed();
 
     accounts = await ethers.getSigners();

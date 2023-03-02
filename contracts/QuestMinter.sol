@@ -2,12 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interface/IBadge.sol";
 import "./interface/IQuest.sol";
 
-contract QuestMinter is Initializable, OwnableUpgradeable {
+contract QuestMinter is Ownable {
     using ECDSA for bytes32;
 
     IQuest public quest;
@@ -24,9 +23,7 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
     event Donation(address from, address to, uint256 amount);
     event Airdroped(uint256 indexed tokenId, address indexed to);
 
-    function initialize(address badge_, address quest_) public initializer {
-        __Ownable_init();
-
+    constructor(address badge_, address quest_) {
         badge = IBadge(badge_);
         quest = IQuest(quest_);
         signer = msg.sender;

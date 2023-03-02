@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "./interface/IBadge.sol";
 
-contract Badge is IBadge, OwnableUpgradeable, ERC1155Upgradeable {
+contract Badge is IBadge, Ownable, ERC1155 {
     mapping(uint256 => address) public creators;
     mapping(uint256 => uint256) private _tokenSupply;
     mapping(uint256 => string) customUri;
@@ -17,9 +16,7 @@ contract Badge is IBadge, OwnableUpgradeable, ERC1155Upgradeable {
     string public constant name = "Decert Badge";
     string public constant symbol= "DBadge";
 
-    function initialize(string memory uri_) public initializer {
-        __Ownable_init();
-        __ERC1155_init(uri_);
+    constructor(string memory uri_) ERC1155(uri_) {
     }
 
     modifier onlyMinter() {
@@ -43,7 +40,7 @@ contract Badge is IBadge, OwnableUpgradeable, ERC1155Upgradeable {
         uint256[] memory ids,
         uint256[] memory amounts,
         bytes memory data
-    ) internal virtual override(ERC1155Upgradeable) {
+    ) internal virtual override(ERC1155) {
         require(
             from == address(0) || to == address(0),
             "NonTransferrableERC1155Token: non-transferrable"
@@ -57,7 +54,7 @@ contract Badge is IBadge, OwnableUpgradeable, ERC1155Upgradeable {
     function setApprovalForAll(address, bool)
         public
         virtual
-        override(ERC1155Upgradeable)
+        override(ERC1155)
     {
         revert("NonApprovableERC1155Token: non-approvable");
     }

@@ -1,15 +1,14 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "base64-sol/base64.sol";
 import "./SBTBase.sol";
 import "./interface/IQuest.sol";
 import "./interface/IBadge.sol";
 
-contract Quest is IQuest, SBTBase, OwnableUpgradeable {
+contract Quest is IQuest, SBTBase, Ownable {
     IBadge public badge;
 
     uint256 public totalSupply;
@@ -23,10 +22,8 @@ contract Quest is IQuest, SBTBase, OwnableUpgradeable {
         uint256 indexed tokenId,
         QuestData questData
     );
-    // 不可升级
-    function initialize(address badge_) public initializer {
-        SBTBase.initialize("Decert Quest", "DQuest");
-        __Ownable_init();
+
+    constructor(address badge_) SBTBase("Decert Quest", "DQuest") {
         badge = IBadge(badge_);
     }
 

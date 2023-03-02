@@ -1,9 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 
-interface IQuest is IERC721Upgradeable {
+interface IQuest is IERC721 {
     struct QuestData {
         uint32 startTs;
         uint32 endTs;
