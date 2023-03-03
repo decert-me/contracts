@@ -70,7 +70,36 @@ contract QuestMinter is Ownable {
         startTokenId += 1;
     }
 
-    // TODO: update title...
+    function modifyQuest(
+        uint256 tokenId,
+        IQuest.QuestData calldata questData,
+        bytes calldata signature
+    ) external {
+        require(quest.ownerOf(tokenId) == msg.sender, "Not creator");
+
+        uint32 startTs = questData.startTs;
+        uint32 endTs = questData.endTs;
+        uint192 supply = questData.supply;
+        string memory title = questData.title;
+        string memory uri = questData.uri;
+
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                tokenId,
+                startTs,
+                endTs,
+                supply,
+                title,
+                uri,
+                address(this),
+                address(msg.sender)
+            )
+        );
+        require(_verify(hash, signature), "Invalid signer");
+
+        quest.modifyQuest(tokenId, questData);
+    }
+
     function setBadgeURI(
         uint256 tokenId,
         string memory uri,
@@ -119,7 +148,7 @@ contract QuestMinter is Ownable {
             emit Donation(msg.sender, creator, msg.value);
         }
 
-        badge.updateScore(msg.sender,tokenId,score);
+        badge.updateScore(msg.sender, tokenId, score);
     }
 
     function updateScore(uint256 tokenId, uint256 score, bytes calldata signature)external{
@@ -135,7 +164,7 @@ contract QuestMinter is Ownable {
         );
         require(_verify(hash, signature), "Invalid signer");
 
-        badge.updateScore(msg.sender,tokenId,score);
+        badge.updateScore(msg.sender, tokenId, score);
     }
 
     function airdropBadge(

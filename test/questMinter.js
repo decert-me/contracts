@@ -19,6 +19,7 @@ const REVERT_MSGS = {
   'InvalidReceivers': 'Invalid receivers',
   'NoneExistentToken': 'None existent token',
   'InvalidTokenID': 'ERC721: invalid token ID',
+  'ClaimedCannotModify':'Claimed cannot modify',
 }
 
 const INVALID_SIG = '0xbba42b3d0af3d44ce510e7b6720750510dab05d6158de272cc06f91994c9dbf02ddee04c3697120ce7ca953978aef6bfb08edeaea38567dd0079f1da7582ccb71c';
@@ -35,6 +36,15 @@ const questData = {
   title: 'title',
   uri: 'uri',
 }
+
+const questDataNew = {
+  startTs: 1000,
+  endTs: 1000,
+  supply: 0,
+  title: 'titleNew',
+  uri: 'uriNew',
+}
+
 
 const questParams = {
   'questData': questData,
@@ -64,6 +74,16 @@ describe('QuestMinter', async () => {
     const types = ['uint32', 'uint32', 'uint192', 'string', 'string', 'address', 'address'];
     const { startTs, endTs, supply, title, uri } = questData;
     const params = [startTs, endTs, supply, title, uri, questMinterContract.address, sender.address];
+
+    const hash = ethers.utils.solidityKeccak256(types, params);
+    const signature = await signer.signMessage(ethers.utils.arrayify(hash));
+    return signature;
+  }
+
+  async function genModifySig(tokenId, questData, sender, signer) {
+    const types = ['uint256', 'uint32', 'uint32', 'uint192', 'string', 'string', 'address', 'address'];
+    const { startTs, endTs, supply, title, uri } = questData;
+    const params = [tokenId, startTs, endTs, supply, title, uri, questMinterContract.address, sender.address];
 
     const hash = ethers.utils.solidityKeccak256(types, params);
     const signature = await signer.signMessage(ethers.utils.arrayify(hash));
@@ -209,6 +229,69 @@ describe('QuestMinter', async () => {
         .withArgs(uri, InitStartTokenId);
     });
   });
+
+  describe('modifyQuest()', () => {
+    const { startTs, endTs, supply, title, uri } = questDataNew;
+
+    let creator;
+    let signer;
+    let createQuestSig = '';
+    let score = 0;
+    before(async () => {
+      signer = owner;
+      creator = accounts[2];
+      claimer = accounts[3];
+
+      modifyQuestSig = await genModifySig(InitStartTokenId, questDataNew, creator, signer);
+      createQuestSig = await genCreateSig(questData, creator, signer);
+      claimSig = await genClaimSig({ 'tokenId': InitStartTokenId, 'score': score }, claimer, signer);
+    })
+
+    it('should revert "Invalid signer"', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+
+      await expect(
+        questMinterContract.connect(creator).modifyQuest(InitStartTokenId, questData, INVALID_SIG)
+      ).to.revertedWith(REVERT_MSGS['InvalidSigner']);
+    });
+
+    it('should modify quest', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+
+      await questMinterContract.connect(creator).modifyQuest(InitStartTokenId, questDataNew, modifyQuestSig);
+
+      {
+        // quest
+        expect(await questContract.totalSupply()).to.equal(1);
+
+        const quest = await questContract.getQuest(InitStartTokenId);
+        expect(quest.startTs).to.equal(startTs);
+        expect(quest.endTs).to.equal(endTs);
+        expect(quest.supply).to.equal(supply);
+        expect(quest.title).to.equal(title);
+
+        const questOwner = await questContract.ownerOf(InitStartTokenId);
+        expect(questOwner).to.equal(creator.address);
+      }
+
+      {
+        // badge
+        expect(await badgeContract.creators(InitStartTokenId)).to.equal(creator.address);
+        expect(await badgeContract.tokenSupply(InitStartTokenId)).to.equal(0);
+      }
+    });
+
+    it('should revert cannot modify', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+      await questMinterContract.connect(claimer).claim(InitStartTokenId, score, claimSig);
+
+      await expect(
+        questMinterContract.connect(creator).modifyQuest(InitStartTokenId, questDataNew, modifyQuestSig)
+      ).to.revertedWith(REVERT_MSGS['ClaimedCannotModify']);
+    });
+
+  });
+
 
   describe('setCustomURI()', () => {
     let { questData } = questParams;

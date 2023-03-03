@@ -12,6 +12,7 @@ const REVERT_MSGS = {
   'NonexistentTokenUri': 'ERC721Metadata: URI query for nonexistent token',
   'SBTNonTransferable': 'SBT:non-transferable',
   'NoneExistentToken':'None existent token',
+  'ClaimedCannotModify':'Claimed cannot modify',
 }
 
 async function revertBlock(snapshotId) {
@@ -169,10 +170,30 @@ describe("Quest", async () => {
     }); 
   })
 
-  describe('getQuest()', async () => {
+  describe('modifyQuest()', async () => {
     beforeEach(async () => {
       let { creator, id, initialSupply, uri, data } = createParams;
       await badgeContract.connect(minter).create(creator, id, initialSupply, uri, data)
+    });
+
+    it("not minter should revert", async () => {
+      let { to, id, questData, data } = mintParams;
+
+      await expect(questContract.connect(accounts[2]).modifyQuest(id, questData)).to.be.revertedWith(REVERT_MSGS['OnlyMinter']);
+    });
+
+    it("modify claimed should revert", async () => {
+      let { to, id, questData, data } = mintParams;
+      await badgeContract.connect(minter).mint(to, id, 1, data);
+
+      await expect(questContract.connect(minter).modifyQuest(id, questData)).to.be.revertedWith(REVERT_MSGS['ClaimedCannotModify']);
+    });
+  });
+
+  describe('getQuest()', async () => {
+    beforeEach(async () => {
+      let { creator, id, initialSupply, uri, data } = createParams;
+      await badgeContract.connect(minter).create(creator, id, initialSupply, uri, data);
     });
 
     it("None existent quest", async () => {

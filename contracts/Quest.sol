@@ -57,6 +57,15 @@ contract Quest is IQuest, SBTBase, Ownable {
         emit QuestCreated(to, tokenId, questData);
     }
 
+    function modifyQuest(
+        uint256 tokenId,
+        QuestData calldata questData
+    ) external onlyMinter {
+        require(badge.tokenSupply(tokenId) == 0, "Claimed cannot modify");
+
+        quests[tokenId] = questData;
+    }
+
     function getQuest(uint256 tokenId)
         external
         view
