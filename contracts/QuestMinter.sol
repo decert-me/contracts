@@ -141,47 +141,44 @@ contract QuestMinter is Ownable {
     }
 
     function airdropBadge(
-        uint256 tokenId, //TODO: tokenIds
+        uint256[] calldata tokenIds,
         address[] calldata receivers,
         bytes calldata signature
     ) external {
         bytes32 hash = keccak256(
             abi.encodePacked(
                 "airdropBadge",
-                tokenId,
+                tokenIds,
                 address(badge),
                 address(msg.sender)
             )
         );
-
         require(_verify(hash, signature), "Invalid signer");
 
         uint256 numOfReceivers = receivers.length;
         require(numOfReceivers > 0, "Invalid receivers");
+        require(numOfReceivers == tokenIds.length, "Invalid receivers length");
 
-        IQuest.QuestData memory questData = quest.getQuest(tokenId);
-        if (questData.supply > 0) // TODO: big number
-            require(
-                badge.tokenSupply(tokenId) + numOfReceivers <= questData.supply,
-                "Over limit"
-            );
+        IQuest.QuestData memory questData = quest.getQuest(tokenIds[0]);
+        require(
+            badge.tokenSupply(tokenIds[0]) + 1 <= questData.supply,
+            "Over limit"
+        );
 
         require(block.timestamp > questData.startTs, "Not in time");
-
-        if (questData.endTs > 0)
-            require(block.timestamp <= questData.endTs, "Not in time");
+        require(block.timestamp <= questData.endTs, "Not in time");
 
         for (uint256 i = 0; i < numOfReceivers; i++) {
             address receiver = receivers[i];
-            if(claimed[tokenId][receiver]) {
+            if(claimed[tokenIds[i]][receiver]) {
                 continue;
             }
 
-            claimed[tokenId][receiver] = true;
+            claimed[tokenIds[i]][receiver] = true;
 
-            badge.mint(receiver, tokenId, 1, "0x");
+            badge.mint(receiver, tokenIds[i], 1, "0x");
 
-            emit Airdroped(tokenId, receiver);
+            emit Airdroped(tokenIds[i], receiver);
         }
     }
 

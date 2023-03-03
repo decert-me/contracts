@@ -30,8 +30,8 @@ async function revertBlock(snapshotId) {
 
 const questData = {
   startTs: 0,
-  endTs: 0,
-  supply: 0,
+  endTs: 4294967295,
+  supply: 4294967295,
   title: 'title',
   uri: 'uri',
 }
@@ -87,7 +87,7 @@ describe('QuestMinter', async () => {
 
   async function genAirdropBadgeSig(params, sender, signer) {
     const { tokenId } = params;
-    const hash = ethers.utils.solidityKeccak256(['string', 'uint256', 'address', 'address'], ['airdropBadge', tokenId, badgeContract.address, sender.address]);
+    const hash = ethers.utils.solidityKeccak256(['string', 'uint256[]', 'address', 'address'], ['airdropBadge', tokenId, badgeContract.address, sender.address]);
 
     const signature = await signer.signMessage(ethers.utils.arrayify(hash));
     return signature;
@@ -191,7 +191,7 @@ describe('QuestMinter', async () => {
       {
         // badge
         expect(await badgeContract.creators(InitStartTokenId)).to.equal(creator.address);
-        expect(await badgeContract.tokenSupply(InitStartTokenId)).to.equal(supply);
+        expect(await badgeContract.tokenSupply(InitStartTokenId)).to.equal(0);
       }
     });
 
@@ -503,7 +503,9 @@ describe('QuestMinter', async () => {
       signer = owner;
       caller = accounts[9]; // 任意
 
-      airdropBadgeSig = await genAirdropBadgeSig({ 'tokenId': InitStartTokenId }, caller, signer);
+      airdropBadgeSig = await genAirdropBadgeSig({ 'tokenId': [InitStartTokenId] }, caller, signer);
+      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'tokenId': [InitStartTokenId,InitStartTokenId+1] }, caller, signer);
+      airdropBadgeSigMultiSame = await genAirdropBadgeSig({ 'tokenId': [InitStartTokenId,InitStartTokenId] }, caller, signer);
 
       creator = accounts[2];
       createQuestSig = await genCreateSig(questData, creator, signer);
@@ -511,33 +513,56 @@ describe('QuestMinter', async () => {
       claimer = accounts[3];
       claimSig = await genClaimSig({ 'tokenId': InitStartTokenId, 'score': score }, claimer, signer);
     })
-
     it('should succeed when single address', async () => {
       await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
 
       const receivers = [receiver1];
-      await questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig);
+      await questMinterContract.connect(caller).airdropBadge([InitStartTokenId], receivers, airdropBadgeSig);
 
       let balance1 = await badgeContract.balanceOf(receiver1, InitStartTokenId);
-      let tokenSupply = await badgeContract.tokenSupply(InitStartTokenId);
+      let tokenSupply1 = await badgeContract.tokenSupply(InitStartTokenId);
 
       expect(balance1).to.equal(1);
-      expect(tokenSupply).to.equal(1);
+      expect(tokenSupply1).to.equal(1);
     });
 
-    it('should airdrop when batch address', async () => {
+    it('should succeed when multi address', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
       await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
 
-      const receivers = [receiver1, receiver2];
-      await questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig);
+
+      const receivers = [receiver1,receiver2];
+      await questMinterContract.connect(caller).airdropBadge([InitStartTokenId,InitStartTokenId+1], receivers, airdropBadgeSigMulti);
 
       let balance1 = await badgeContract.balanceOf(receiver1, InitStartTokenId);
-      let balance2 = await badgeContract.balanceOf(receiver2, InitStartTokenId);
-      let tokenSupply = await badgeContract.tokenSupply(InitStartTokenId);
+      let tokenSupply1 = await badgeContract.tokenSupply(InitStartTokenId);
+
+      expect(balance1).to.equal(1);
+      expect(tokenSupply1).to.equal(1);
+
+      let balance2 = await badgeContract.balanceOf(receiver2, InitStartTokenId+1);
+      let tokenSupply2 = await badgeContract.tokenSupply(InitStartTokenId+1);
+
+      expect(balance2).to.equal(1);
+      expect(tokenSupply2).to.equal(1);
+    });
+
+    it('should airdrop when batch token single address', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+
+      const receivers = [receiver1, receiver1];
+      await questMinterContract.connect(caller).airdropBadge([InitStartTokenId,InitStartTokenId+1], receivers, airdropBadgeSigMulti);
+
+      let balance1 = await badgeContract.balanceOf(receiver1, InitStartTokenId);
+      let balance2 = await badgeContract.balanceOf(receiver1, InitStartTokenId+1);
+      let tokenSupply1 = await badgeContract.tokenSupply(InitStartTokenId);
+      let tokenSupply2 = await badgeContract.tokenSupply(InitStartTokenId+1);
 
       expect(balance1).to.equal(1);
       expect(balance2).to.equal(1);
-      expect(tokenSupply).to.equal(2);
+      expect(tokenSupply1).to.equal(1);
+      expect(tokenSupply2).to.equal(1);
     });
 
     it('should failed when none address', async () => {
@@ -545,7 +570,16 @@ describe('QuestMinter', async () => {
 
       const receivers = [];
       await expect(
-        questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig)
+        questMinterContract.connect(caller).airdropBadge([InitStartTokenId], receivers, airdropBadgeSig)
+      ).to.be.revertedWith(REVERT_MSGS['InvalidReceivers']);
+    });
+
+    it('should failed address and length not equal', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+
+      const receivers = [];
+      await expect(
+        questMinterContract.connect(caller).airdropBadge([InitStartTokenId], receivers, airdropBadgeSig)
       ).to.be.revertedWith(REVERT_MSGS['InvalidReceivers']);
     });
 
@@ -554,7 +588,7 @@ describe('QuestMinter', async () => {
 
       const receivers = [receiver1];
       await expect(
-        questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, INVALID_SIG)
+        questMinterContract.connect(caller).airdropBadge([InitStartTokenId], receivers, INVALID_SIG)
       ).to.be.revertedWith(REVERT_MSGS['InvalidSigner']);
     });
 
@@ -563,7 +597,7 @@ describe('QuestMinter', async () => {
 
       const receivers = [receiver1];
       await expect(
-        questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig)
+        questMinterContract.connect(caller).airdropBadge([InitStartTokenId], receivers, airdropBadgeSig)
       ).to.emit(questMinterContract, 'Airdroped')
         .withArgs(InitStartTokenId, receivers[0]);
     });
@@ -575,11 +609,11 @@ describe('QuestMinter', async () => {
       await questMinterContract.connect(creator).createQuest(questData_, createQuestSig);
 
       // airdrop1
-      await questMinterContract.connect(caller).airdropBadge(InitStartTokenId, [receiver1], airdropBadgeSig);
+      await questMinterContract.connect(caller).airdropBadge([InitStartTokenId], [receiver1], airdropBadgeSig);
 
       // second should exceed limit
       await expect(
-        questMinterContract.connect(caller).airdropBadge(InitStartTokenId, [receiver2], airdropBadgeSig)
+        questMinterContract.connect(caller).airdropBadge([InitStartTokenId], [receiver2], airdropBadgeSig)
       ).to.revertedWith(REVERT_MSGS['OverLimit']);
     });
 
@@ -593,7 +627,7 @@ describe('QuestMinter', async () => {
       await questMinterContract.connect(creator).createQuest(questData_, createQuestSig);
 
       await expect(
-        questMinterContract.connect(caller).airdropBadge(InitStartTokenId, [receiver1], airdropBadgeSig)
+        questMinterContract.connect(caller).airdropBadge([InitStartTokenId], [receiver1], airdropBadgeSig)
       ).to.revertedWith(REVERT_MSGS['NotInTime']);
     });
 
@@ -607,7 +641,7 @@ describe('QuestMinter', async () => {
       await questMinterContract.connect(creator).createQuest(questData_, createQuestSig);
 
       await expect(
-        questMinterContract.connect(caller).airdropBadge(InitStartTokenId, [receiver1], airdropBadgeSig)
+        questMinterContract.connect(caller).airdropBadge([InitStartTokenId], [receiver1], airdropBadgeSig)
       ).to.revertedWith(REVERT_MSGS['NotInTime']);
     });
 
@@ -622,7 +656,7 @@ describe('QuestMinter', async () => {
 
       await questMinterContract.connect(creator).createQuest(questData_, createQuestSig);
 
-      await questMinterContract.connect(caller).airdropBadge(InitStartTokenId, [receiver1], airdropBadgeSig)
+      await questMinterContract.connect(caller).airdropBadge([InitStartTokenId], [receiver1], airdropBadgeSig)
 
       let balance = await badgeContract.balanceOf(receiver1, InitStartTokenId);
       expect(balance).to.equal(1);
@@ -636,7 +670,7 @@ describe('QuestMinter', async () => {
 
       //second
       const receivers = [claimer.address, receiver2];
-      await questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig);
+      await questMinterContract.connect(caller).airdropBadge([InitStartTokenId,InitStartTokenId], receivers, airdropBadgeSigMultiSame);
 
       let balanceClaimer = await badgeContract.balanceOf(claimer.address, InitStartTokenId);
       expect(balanceClaimer).to.equal(1);
@@ -650,11 +684,11 @@ describe('QuestMinter', async () => {
 
       // first
       let receivers = [receiver1, receiver2];
-      await questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig);
+      await questMinterContract.connect(caller).airdropBadge([InitStartTokenId,InitStartTokenId], receivers, airdropBadgeSigMultiSame);
 
       // second
       receivers = [receiver2];
-      await questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig);
+      await questMinterContract.connect(caller).airdropBadge([InitStartTokenId], receivers, airdropBadgeSig);
 
       let balanceReceiver = await badgeContract.balanceOf(receiver2, InitStartTokenId);
       expect(balanceReceiver).to.equal(1);
@@ -663,8 +697,8 @@ describe('QuestMinter', async () => {
     it('should revert when airdrop none existent token', async () => {
       let receivers = [receiver1, receiver2];
       await expect(
-        questMinterContract.connect(caller).airdropBadge(InitStartTokenId, receivers, airdropBadgeSig)
-      ).to.revertedWith(REVERT_MSGS['NoneExistentToken']);
+        questMinterContract.connect(caller).airdropBadge([InitStartTokenId,InitStartTokenId], receivers, airdropBadgeSigMultiSame)
+      ).to.revertedWith(REVERT_MSGS['OverLimit']);
     });
   });
 });
