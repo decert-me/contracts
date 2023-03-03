@@ -65,6 +65,10 @@ describe("Quest", async () => {
     questContract = await Quest.deploy(badgeContract.address);
     await questContract.deployed();
 
+    const QuestMetadata = await ethers.getContractFactory("QuestMetadata");
+    questMetadataContract = await QuestMetadata.deploy(badgeContract.address, questContract.address);
+    await questMetadataContract.deployed();
+
     accounts = await ethers.getSigners();
     owner = accounts[0];
     minter = accounts[1];
@@ -73,8 +77,8 @@ describe("Quest", async () => {
     await questContract.setMinter(minter.address, true);
     await badgeContract.setMinter(minter.address, true);
     // set meta 
-    await questContract.setMetaContract(questContract.address, badgeContract.address)
-    
+    await questContract.setMetaContract(questMetadataContract.address)
+
     snapshotId = await ethers.provider.send("evm_snapshot");
   })
 
@@ -228,7 +232,7 @@ describe("Quest", async () => {
     });
 
     it("should revert NonexistentTokenUri", async () => {
-      await expect(questContract.tokenURI(0)).to.be.revertedWith(REVERT_MSGS['NonexistentTokenUri']);
+      await expect(questContract.tokenURI(1)).to.be.revertedWith(REVERT_MSGS['NonexistentTokenUri']);
     });
 
     it("uri", async () => {

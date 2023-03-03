@@ -11,7 +11,7 @@ contract QuestMetadata is IMetadata {
     IQuest public quest;
     IBadge public badge;
 
-    constructor(address quests_, address badge_) {
+    constructor(address badge_, address quests_) {
         quest = IQuest(quests_);
         badge = IBadge(badge_);
     }

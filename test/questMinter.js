@@ -118,13 +118,13 @@ describe('QuestMinter', async () => {
     badgeContract = await Badge.deploy(uri);
     await badgeContract.deployed();
 
-    const QuestMetadata = await ethers.getContractFactory("QuestMetadata");
-    questMetadataContract = await QuestMetadata.deploy();
-    await questMetadataContract.deployed();
-
     const Quest = await ethers.getContractFactory('Quest');
-    questContract = await Quest.deploy(badgeContract.address, questMetadataContract.address);
+    questContract = await Quest.deploy(badgeContract.address);
     await questContract.deployed();
+
+    const QuestMetadata = await ethers.getContractFactory("QuestMetadata");
+    questMetadataContract = await QuestMetadata.deploy(badgeContract.address, questContract.address);
+    await questMetadataContract.deployed();
 
     const QuestMinter = await ethers.getContractFactory('QuestMinter');
     questMinterContract = await QuestMinter.deploy(badgeContract.address, questContract.address);
@@ -139,7 +139,9 @@ describe('QuestMinter', async () => {
     // set minter
     await questContract.setMinter(minter.address, true);
     await badgeContract.setMinter(minter.address, true);
-
+    // set meta 
+    await questContract.setMetaContract(questMetadataContract.address)
+    
     snapshotId = await ethers.provider.send('evm_snapshot');
   })
 
