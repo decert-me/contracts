@@ -10,6 +10,7 @@ contract Badge is IBadge, Ownable, ERC1155 {
     mapping(uint256 => uint256) private _tokenSupply;
     mapping(uint256 => string) customUri;
     mapping(address => bool) public minters;
+    mapping(uint256 => mapping(address => uint256)) public scores;
 
     event SetMinter(address minter, bool enabled);
 
@@ -144,5 +145,11 @@ contract Badge is IBadge, Ownable, ERC1155 {
      */
     function _exists(uint256 tokenId) internal view returns (bool) {
         return creators[tokenId] != address(0);
+    }
+
+    function updateScore(address to, uint256 tokenId, uint256 score) external onlyMinter{
+        require(balanceOf(to, tokenId) != 0, "not claimed yet");
+
+        scores[tokenId][to] = score;
     }
 }

@@ -294,7 +294,7 @@ describe('QuestMinter', async () => {
       await questMinterContract.connect(claimer).claim(InitStartTokenId, score, claimSig);
 
       let balance = await badgeContract.balanceOf(claimer.address, InitStartTokenId);
-      let _score = await questMinterContract.scores(InitStartTokenId, claimer.address);
+      let _score = await badgeContract.scores(InitStartTokenId, claimer.address);
       expect(balance).to.equal(1);
       expect(_score).to.equal(score);
     });
@@ -454,11 +454,11 @@ describe('QuestMinter', async () => {
       await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
 
       await questMinterContract.connect(claimer).claim(InitStartTokenId, score, claimSig);
-      let _score = await questMinterContract.scores(InitStartTokenId, claimer.address);
+      let _score = await badgeContract.scores(InitStartTokenId, claimer.address);
       expect(_score).to.equal(score);
 
       await questMinterContract.connect(claimer).updateScore(InitStartTokenId, score2, claimSig2);
-      let _score2 = await questMinterContract.scores(InitStartTokenId, claimer.address);
+      let _score2 = await badgeContract.scores(InitStartTokenId, claimer.address);
       expect(_score2).to.equal(score2);
     });
 

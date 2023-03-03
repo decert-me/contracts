@@ -16,7 +16,6 @@ contract QuestMinter is Ownable {
     address public signer;
 
     mapping(uint256 => mapping(address => bool)) claimed;
-    mapping(uint256 => mapping(address => uint256)) public scores;
 
     event Claimed(uint256 indexed tokenId, address indexed sender);
     event SignerChanged(address signer);
@@ -120,10 +119,9 @@ contract QuestMinter is Ownable {
             emit Donation(msg.sender, creator, msg.value);
         }
 
-        scores[tokenId][msg.sender] = score; //TODO: migrate to badge
+        badge.updateScore(msg.sender,tokenId,score);
     }
 
-    // TODO: 60%。。
     function updateScore(uint256 tokenId, uint256 score, bytes calldata signature)external{
         require(claimed[tokenId][msg.sender], "not claimed yet");
         
@@ -137,7 +135,7 @@ contract QuestMinter is Ownable {
         );
         require(_verify(hash, signature), "Invalid signer");
 
-        scores[tokenId][msg.sender] = score;
+        badge.updateScore(msg.sender,tokenId,score);
     }
 
     function airdropBadge(
