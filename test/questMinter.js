@@ -118,8 +118,12 @@ describe('QuestMinter', async () => {
     badgeContract = await Badge.deploy(uri);
     await badgeContract.deployed();
 
+    const QuestMetadata = await ethers.getContractFactory("QuestMetadata");
+    questMetadataContract = await QuestMetadata.deploy();
+    await questMetadataContract.deployed();
+
     const Quest = await ethers.getContractFactory('Quest');
-    questContract = await Quest.deploy(badgeContract.address);
+    questContract = await Quest.deploy(badgeContract.address, questMetadataContract.address);
     await questContract.deployed();
 
     const QuestMinter = await ethers.getContractFactory('QuestMinter');

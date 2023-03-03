@@ -62,7 +62,6 @@ describe("Quest", async () => {
     await badgeContract.deployed();
 
     const Quest = await ethers.getContractFactory("Quest");
-
     questContract = await Quest.deploy(badgeContract.address);
     await questContract.deployed();
 
@@ -73,7 +72,9 @@ describe("Quest", async () => {
     // set minter
     await questContract.setMinter(minter.address, true);
     await badgeContract.setMinter(minter.address, true);
-
+    // set meta 
+    await questContract.setMetaContract(questContract.address, badgeContract.address)
+    
     snapshotId = await ethers.provider.send("evm_snapshot");
   })
 

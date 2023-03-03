@@ -22,6 +22,7 @@ interface IQuest is IERC721 {
 
     function getQuest(uint256 tokenId)
         external
+        view
         returns (QuestData memory questData);
 
     function updateURI(uint256 tokenId, string calldata uri) external;
