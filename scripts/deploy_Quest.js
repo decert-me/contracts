@@ -17,7 +17,7 @@ async function main() {
 
 
   if (!['hardhat', 'localhost'].includes(network.name)) {
-    console.log(`[${contractName}] Please verify implementation contract : npx hardhat verify ${contract.address} --network ${network.name}`);
+    console.log(`[${contractName}] Please verify contract : npx hardhat verify ${contract.address} --network ${network.name}`);
   }
 }
 

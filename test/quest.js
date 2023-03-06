@@ -259,4 +259,20 @@ describe("Quest", async () => {
       ).to.be.revertedWith(REVERT_MSGS['SBTNonTransferable']);
     });
   })
+
+  describe('SetMetaContract', async () => {
+    it("should revert set zero address", async () => {
+      await expect(
+        questContract.connect(owner).setMetaContract(AddressZero)
+      ).to.revertedWithCustomError(questContract, 'ZeroAddress');
+    });
+
+    it("should set success", async () => {
+      expect(await questContract.meta()).to.equal(questMetadataContract.address);
+
+      await questContract.connect(owner).setMetaContract(questContract.address);
+
+      expect(await questContract.meta()).to.equal(questContract.address);
+    });
+  });
 });

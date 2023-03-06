@@ -223,6 +223,30 @@ describe('QuestMinter', async () => {
       ).to.emit(badgeContract, 'URI')
         .withArgs(uri, InitStartTokenId);
     });
+
+    it('should create two quest and badge', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+
+      let nextTokenId = (await questMinterContract.startTokenId()).toNumber();
+      expect(nextTokenId).to.equal(InitStartTokenId + 2);
+
+      {
+        // quest
+        expect(await questContract.totalSupply()).to.equal(2);
+        expect(await questContract.ownerOf(InitStartTokenId)).to.equal(creator.address);
+        expect(await questContract.ownerOf(InitStartTokenId + 1)).to.equal(creator.address);
+      }
+
+      {
+        // badge
+        expect(await badgeContract.creators(InitStartTokenId)).to.equal(creator.address);
+        expect(await badgeContract.tokenSupply(InitStartTokenId)).to.equal(0);
+
+        expect(await badgeContract.creators(InitStartTokenId + 1)).to.equal(creator.address);
+        expect(await badgeContract.tokenSupply(InitStartTokenId + 1)).to.equal(0);
+      }
+    });
   });
 
   describe('modifyQuest()', () => {
@@ -285,6 +309,13 @@ describe('QuestMinter', async () => {
       ).to.revertedWithCustomError(questContract, 'ClaimedCannotModify');
     });
 
+    it('should revert "Not creator"', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig)
+
+      await expect(
+        questMinterContract.connect(accounts[3]).modifyQuest(InitStartTokenId, questDataNew, modifyQuestSig)
+      ).to.revertedWithCustomError(questMinterContract, 'NotCreator');
+    });
   });
 
 
@@ -463,6 +494,16 @@ describe('QuestMinter', async () => {
       ).to.revertedWithCustomError(questMinterContract, 'OverLimit');
     });
 
+    it('should revert "Invalid signer"', async () => {
+      const questData_ = Object.assign({}, questData);
+      questData_.supply = 1;
+      createQuestSig = await genCreateSig(questData_, creator, signer);
+      await questMinterContract.connect(creator).createQuest(questData_, createQuestSig);
+
+      await expect(
+        questMinterContract.connect(claimer).claim(InitStartTokenId, score, INVALID_SIG)
+      ).to.revertedWithCustomError(questMinterContract, 'InvalidSigner');
+    });
   });
 
   describe('claim with donation', () => {
@@ -546,7 +587,7 @@ describe('QuestMinter', async () => {
 
       await expect(
         questMinterContract.connect(claimer).updateScore(InitStartTokenId, score2, INVALID_SIG)
-      ).to.revertedWithCustomError(questMinterContract,'InvalidSigner');
+      ).to.revertedWithCustomError(questMinterContract, 'InvalidSigner');
     });
 
     it('should revert "Not in time" when now > endTs', async () => {
@@ -561,7 +602,7 @@ describe('QuestMinter', async () => {
       await network.provider.send("evm_increaseTime", [3600]) // add time
       await expect(
         questMinterContract.connect(claimer).updateScore(InitStartTokenId, score2, claimSig2)
-      ).to.revertedWithCustomError(questMinterContract,'NotInTime');
+      ).to.revertedWithCustomError(questMinterContract, 'NotInTime');
     });
   })
 
@@ -704,7 +745,7 @@ describe('QuestMinter', async () => {
       await questMinterContract.connect(creator).createQuest(questData_, createQuestSig);
 
       await questMinterContract.connect(caller).airdropBadge([InitStartTokenId], [receiver1], airdropBadgeSig);
-      
+
       expect(await badgeContract.tokenSupply(InitStartTokenId)).to.equal(0);
     });
 
@@ -774,7 +815,7 @@ describe('QuestMinter', async () => {
     it('should skip airdrop none existent token', async () => {
       let receivers = [receiver1, receiver2];
       await questMinterContract.connect(caller).airdropBadge([InitStartTokenId, InitStartTokenId], receivers, airdropBadgeSigMultiSame);
-      
+
       expect(await badgeContract.balanceOf(receiver2, InitStartTokenId)).to.equal(0);
       expect(await badgeContract.balanceOf(receiver1, InitStartTokenId)).to.equal(0);
     });
@@ -783,10 +824,28 @@ describe('QuestMinter', async () => {
       await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
 
       let receivers = [receiver1, receiver2];
-      await questMinterContract.connect(caller).airdropBadge([InitStartTokenId, InitStartTokenId+1], receivers, airdropBadgeSigMulti);
-      
+      await questMinterContract.connect(caller).airdropBadge([InitStartTokenId, InitStartTokenId + 1], receivers, airdropBadgeSigMulti);
+
       expect(await badgeContract.balanceOf(receiver1, InitStartTokenId)).to.equal(1);
-      expect(await badgeContract.balanceOf(receiver2, InitStartTokenId+1)).to.equal(0);
+      expect(await badgeContract.balanceOf(receiver2, InitStartTokenId + 1)).to.equal(0);
+    });
+
+    it('should revert "InvalidTokenIds" when receivers length < tokenIds length', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+
+      let receivers = [receiver1];
+      await expect(
+        questMinterContract.connect(caller).airdropBadge([InitStartTokenId, InitStartTokenId + 1], receivers, airdropBadgeSigMulti)
+      ).to.revertedWithCustomError(questMinterContract, 'InvalidTokenIds');
+    });
+
+    it('should revert "InvalidTokenIds" when receivers length > tokenIds length', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+
+      let receivers = [receiver1,receiver2];
+      await expect(
+        questMinterContract.connect(caller).airdropBadge([InitStartTokenId], receivers, airdropBadgeSig)
+      ).to.revertedWithCustomError(questMinterContract, 'InvalidTokenIds');
     });
   });
 });

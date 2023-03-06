@@ -265,4 +265,15 @@ describe("Badge", async () => {
       });
     });
   })
+
+  describe("updateScore", () => {
+    let score = 80;
+
+    it('should revert "NotClaimedYet"', async () => {
+      let { id } = createParams;
+      await expect(
+        badgeContract.connect(minter).updateScore(minter.address, id, score)
+      ).to.revertedWithCustomError(badgeContract, 'NotClaimedYet');
+    });
+  });
 });
