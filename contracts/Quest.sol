@@ -8,7 +8,14 @@ import "./SBTBase.sol";
 import "./interface/IQuest.sol";
 import "./interface/IBadge.sol";
 import "./interface/IMetadata.sol";
+
 contract Quest is IQuest, SBTBase, Ownable {
+    error InvalidMinter();
+    error OnlyMinter();
+    error NonexistentToken();
+    error ClaimedCannotModify();
+    error ZeroAddress();
+
     IBadge public badge;
 
     uint256 public totalSupply;
@@ -28,18 +35,21 @@ contract Quest is IQuest, SBTBase, Ownable {
         badge = IBadge(badge_);
     }
 
-    function setMinter(address minter, bool enabled)
-        external
-        override
-        onlyOwner
-    {
-        require(minter != address(0), "Invalid minter");
+    function setMinter(
+        address minter,
+        bool enabled
+    ) external override onlyOwner {
+        if (minter == address(0)) {
+            revert InvalidMinter();
+        }
         minters[minter] = enabled;
         emit SetMinter(minter, enabled);
     }
 
     modifier onlyMinter() {
-        require(minters[msg.sender], "Only minter");
+        if (!minters[msg.sender]) {
+            revert OnlyMinter();
+        }
         _;
     }
 
@@ -49,7 +59,9 @@ contract Quest is IQuest, SBTBase, Ownable {
         QuestData calldata questData,
         bytes memory data
     ) external override onlyMinter {
-        require(badge.exists(tokenId), "None existent token");
+        if (!badge.exists(tokenId)) {
+            revert NonexistentToken();
+        }
 
         _mint(to, tokenId);
         totalSupply += 1;
@@ -62,38 +74,41 @@ contract Quest is IQuest, SBTBase, Ownable {
         uint256 tokenId,
         QuestData calldata questData
     ) external onlyMinter {
-        require(badge.tokenSupply(tokenId) == 0, "Claimed cannot modify");
+        if (badge.tokenSupply(tokenId) != 0) {
+            revert ClaimedCannotModify();
+        }
 
         quests[tokenId] = questData;
     }
 
-    function getQuest(uint256 tokenId)
-        external
-        view
-        returns (QuestData memory questData)
-    {
+    function getQuest(
+        uint256 tokenId
+    ) external view returns (QuestData memory questData) {
         return quests[tokenId];
     }
 
-    function updateURI(uint256 tokenId, string calldata uri)
-        external
-        onlyMinter
-    {
-        require(
-            _exists(tokenId),
-            "ERC721Metadata: URI query for nonexistent token"
-        );
+    function updateURI(
+        uint256 tokenId,
+        string calldata uri
+    ) external onlyMinter {
+        if (!_exists(tokenId)) {
+            revert NonexistentToken();
+        }
 
         QuestData storage questData = quests[tokenId];
         questData.uri = uri;
     }
 
     function setMetaContract(address _meta) external onlyOwner {
-        require(_meta != address(0), "zero address");
+        if (_meta == address(0)){
+            revert ZeroAddress();
+        }
         meta = _meta;
     }
 
-    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
+    function tokenURI(
+        uint256 tokenId
+    ) public view virtual override returns (string memory) {
         return IMetadata(meta).tokenURI(tokenId);
     }
 }

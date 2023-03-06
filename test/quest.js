@@ -6,13 +6,8 @@ use(solidity);
 
 const provider = new MockProvider();
 const REVERT_MSGS = {
-  'OnlyMinter': 'Only minter',
-  'TokenIdAlreadyExists': 'TokenId already exists',
   'AlreadyMinted': 'ERC721: token already minted',
-  'NonexistentTokenUri': 'ERC721Metadata: URI query for nonexistent token',
   'SBTNonTransferable': 'SBT:non-transferable',
-  'NoneExistentToken':'None existent token',
-  'ClaimedCannotModify':'Claimed cannot modify',
 }
 
 async function revertBlock(snapshotId) {
@@ -111,8 +106,7 @@ describe("Quest", async () => {
 
     it("Invalid minter", async () => {
       let addr = AddressZero;
-      await expect(questContract.connect(owner).setMinter(addr, false)).to.be.revertedWith('Invalid minter');
-
+      await expect(questContract.connect(owner).setMinter(addr, false)).to.be.revertedWithCustomError(questContract, 'InvalidMinter');
     });
 
     it("not owner should revert", async () => {
@@ -130,7 +124,7 @@ describe("Quest", async () => {
     it("not minter should revert", async () => {
       let { to, id, questData, data } = mintParams;
 
-      await expect(questContract.connect(accounts[2]).mint(to, id, questData, data)).to.be.revertedWith(REVERT_MSGS['OnlyMinter']);
+      await expect(questContract.connect(accounts[2]).mint(to, id, questData, data)).to.be.revertedWithCustomError(questContract, 'OnlyMinter');
     });
 
     it("minter mint", async () => {
@@ -171,8 +165,8 @@ describe("Quest", async () => {
       let { to, questData, data } = mintParams;
       await expect(
         questContract.connect(minter).mint(to, 1, questData, data)
-      ).to.be.revertedWith(REVERT_MSGS['NoneExistentToken']);
-    }); 
+      ).to.be.revertedWithCustomError(questContract, 'NonexistentToken');
+    });
   })
 
   describe('modifyQuest()', async () => {
@@ -184,14 +178,14 @@ describe("Quest", async () => {
     it("not minter should revert", async () => {
       let { to, id, questData, data } = mintParams;
 
-      await expect(questContract.connect(accounts[2]).modifyQuest(id, questData)).to.be.revertedWith(REVERT_MSGS['OnlyMinter']);
+      await expect(questContract.connect(accounts[2]).modifyQuest(id, questData)).to.be.revertedWithCustomError(questContract, 'OnlyMinter');
     });
 
     it("modify claimed should revert", async () => {
       let { to, id, questData, data } = mintParams;
       await badgeContract.connect(minter).mint(to, id, 1, data);
 
-      await expect(questContract.connect(minter).modifyQuest(id, questData)).to.be.revertedWith(REVERT_MSGS['ClaimedCannotModify']);
+      await expect(questContract.connect(minter).modifyQuest(id, questData)).to.be.revertedWithCustomError(questContract, 'ClaimedCannotModify');
     });
   });
 
@@ -232,7 +226,10 @@ describe("Quest", async () => {
     });
 
     it("should revert NonexistentTokenUri", async () => {
-      await expect(questContract.tokenURI(1)).to.be.revertedWith(REVERT_MSGS['NonexistentTokenUri']);
+      await expect(questContract.tokenURI(1)).to.be.revertedWithCustomError(
+        questMetadataContract,
+        "NonexistentTokenUri"
+      );
     });
 
     it("uri", async () => {

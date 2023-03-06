@@ -8,6 +8,8 @@ import "./interface/IBadge.sol";
 import "./interface/IMetadata.sol";
 
 contract QuestMetadata is IMetadata {
+    error NonexistentTokenUri();
+
     IQuest public quest;
     IBadge public badge;
 
@@ -19,10 +21,9 @@ contract QuestMetadata is IMetadata {
     function tokenURI(
         uint256 tokenId
     ) external view override returns (string memory) {
-        require(
-            badge.exists(tokenId),
-            "ERC721Metadata: URI query for nonexistent token"
-        );
+        if (!badge.exists(tokenId)) {
+            revert NonexistentTokenUri();
+        }
 
         return generateTokenUri(tokenId);
     }

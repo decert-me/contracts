@@ -5,12 +5,6 @@ use(solidity);
 
 
 const provider = new MockProvider();
-const REVERT_MSGS = {
-  'OnlyMinter': 'Only minter',
-  'TokenIdAlreadyExists': 'TokenId already exists',
-  'AlreadyHoldsBadge': 'Already holds badge',
-  'NoneExistentToken':'None existent token',
-}
 
 async function revertBlock(snapshotId) {
   await ethers.provider.send("evm_revert", [snapshotId]);
@@ -74,7 +68,7 @@ describe("Badge", async () => {
 
   describe('uri()', async () => {
     it("None existent token", async () => {
-      await expect(badgeContract.uri(0)).to.be.revertedWith('None existent token');
+      await expect(badgeContract.uri(0)).to.be.revertedWithCustomError(badgeContract, 'NonexistentToken');
     });
 
     it("set customUri", async () => {
@@ -99,7 +93,7 @@ describe("Badge", async () => {
 
     it("Invalid minter", async () => {
       let addr = AddressZero;
-      await expect(badgeContract.connect(owner).setMinter(addr, false)).to.be.revertedWith('Invalid minter');
+      await expect(badgeContract.connect(owner).setMinter(addr, false)).to.be.revertedWithCustomError(badgeContract, 'InvalidMinter');
 
     });
 
@@ -112,7 +106,7 @@ describe("Badge", async () => {
   describe('create()', async () => {
     it("not minter should revert", async () => {
       let { creator, id, initialSupply, uri, data } = createParams;
-      await expect(badgeContract.connect(accounts[2]).create(creator, id, initialSupply, uri, data)).to.be.revertedWith(REVERT_MSGS['OnlyMinter']);
+      await expect(badgeContract.connect(accounts[2]).create(creator, id, initialSupply, uri, data)).to.be.revertedWithCustomError(badgeContract, 'OnlyMinter');
     });
 
     it("minter create", async () => {
@@ -139,7 +133,7 @@ describe("Badge", async () => {
       // create same tokenId again
       await expect(
         badgeContract.connect(minter).create(creator, id, initialSupply, uri, data)
-      ).to.be.revertedWith(REVERT_MSGS['TokenIdAlreadyExists']);
+      ).to.be.revertedWithCustomError(badgeContract, 'TokenIdAlreadyExists');
     });
   })
 
@@ -151,7 +145,7 @@ describe("Badge", async () => {
 
     it("not minter should revert", async () => {
       let { to, id, quantity, data } = mintParams;
-      await expect(badgeContract.connect(accounts[2]).mint(to, id, quantity, data)).to.be.revertedWith(REVERT_MSGS['OnlyMinter']);
+      await expect(badgeContract.connect(accounts[2]).mint(to, id, quantity, data)).to.be.revertedWithCustomError(badgeContract, 'OnlyMinter');
     });
 
     it("minter mint", async () => {
@@ -185,7 +179,7 @@ describe("Badge", async () => {
       // mint again
       await expect(
         badgeContract.connect(minter).mint(to, id, quantity, data)
-      ).to.be.revertedWith(REVERT_MSGS['AlreadyHoldsBadge']);
+      ).to.be.revertedWithCustomError(badgeContract, 'AlreadyHoldsBadge');
     });
 
     it("mint none existent should revert", async () => {
@@ -194,7 +188,7 @@ describe("Badge", async () => {
       // mint again
       await expect(
         badgeContract.connect(minter).mint(to, 2, quantity, data)
-      ).to.be.revertedWith(REVERT_MSGS['NoneExistentToken']);
+      ).to.be.revertedWithCustomError(badgeContract, 'NonexistentToken');
     });
   })
 
@@ -231,7 +225,7 @@ describe("Badge", async () => {
 
       await expect(
         badgeContract.connect(accounts[2]).setCustomURI(id, newURI)
-      ).to.be.revertedWith(REVERT_MSGS['OnlyMinter']);
+      ).to.be.revertedWithCustomError(badgeContract, 'OnlyMinter');
     });
 
     it("set none existent token should revert", async () => {
@@ -240,8 +234,8 @@ describe("Badge", async () => {
 
       await expect(
         badgeContract.connect(minter).setCustomURI(id, newURI)
-      ).to.be.revertedWith(REVERT_MSGS['NoneExistentToken']);
-    }); 
+      ).to.be.revertedWithCustomError(badgeContract, 'NonexistentToken');
+    });
   });
 
   describe('exists()', async () => {
@@ -267,7 +261,7 @@ describe("Badge", async () => {
         await expect(
           badgeContract.setApprovalForAll(operator, true)
         )
-          .to.be.revertedWith('non-approvable')
+          .to.be.revertedWithCustomError(badgeContract, 'NonApprovableERC1155Token')
       });
     });
   })

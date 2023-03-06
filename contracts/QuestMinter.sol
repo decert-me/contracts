@@ -7,6 +7,14 @@ import "./interface/IBadge.sol";
 import "./interface/IQuest.sol";
 
 contract QuestMinter is Ownable {
+    error NotInTime();
+    error InvalidSigner();
+    error NotCreator();
+    error NonexistentToken();
+    error OverLimit();
+    error InvalidReceivers();
+    error InvalidTokenIds();
+
     using ECDSA for bytes32;
 
     IQuest public quest;
@@ -58,7 +66,9 @@ contract QuestMinter is Ownable {
                 address(msg.sender)
             )
         );
-        require(_verify(hash, signature), "Invalid signer");
+        if (!_verify(hash, signature)) {
+            revert InvalidSigner();
+        }
 
         while (badge.exists(startTokenId)) {
             startTokenId += 1;
@@ -75,7 +85,9 @@ contract QuestMinter is Ownable {
         IQuest.QuestData calldata questData,
         bytes calldata signature
     ) external {
-        require(quest.ownerOf(tokenId) == msg.sender, "Not creator");
+        if (quest.ownerOf(tokenId) != msg.sender) {
+            revert NotCreator();
+        }
 
         uint32 startTs = questData.startTs;
         uint32 endTs = questData.endTs;
@@ -95,7 +107,9 @@ contract QuestMinter is Ownable {
                 address(msg.sender)
             )
         );
-        require(_verify(hash, signature), "Invalid signer");
+        if (!_verify(hash, signature)) {
+            revert InvalidSigner();
+        }
 
         quest.modifyQuest(tokenId, questData);
     }
@@ -105,36 +119,48 @@ contract QuestMinter is Ownable {
         string memory uri,
         bytes calldata signature
     ) external {
-        require(quest.ownerOf(tokenId) == msg.sender, "Not creator");
+        if (quest.ownerOf(tokenId) != msg.sender) {
+            revert NotCreator();
+        }
 
         bytes32 hash = keccak256(
             abi.encodePacked(tokenId, uri, address(badge), address(msg.sender))
         );
-        require(_verify(hash, signature), "Invalid signer");
+        if (!_verify(hash, signature)) {
+            revert InvalidSigner();
+        }
 
         quest.updateURI(tokenId, uri);
         badge.setCustomURI(tokenId, uri);
     }
 
-    function claim(uint256 tokenId, uint256 score, bytes calldata signature) external payable {
-        require(!claimed[tokenId][msg.sender], "Aleady claimed");// 删除
-        require(badge.exists(tokenId), "None existent token");
-
+    function claim(
+        uint256 tokenId,
+        uint256 score,
+        bytes calldata signature
+    ) external payable {
         IQuest.QuestData memory questData = quest.getQuest(tokenId);
-        if (questData.supply > 0)
-            require(
-                badge.tokenSupply(tokenId) < questData.supply,
-                "Over limit"
-            );
-
-        require(block.timestamp > questData.startTs, "Not in time");
-        if (questData.endTs > 0)
-            require(block.timestamp <= questData.endTs, "Not in time");
+        if (badge.tokenSupply(tokenId) >= questData.supply) {
+            revert OverLimit();
+        }
+        if (
+            block.timestamp < questData.startTs ||
+            block.timestamp > questData.endTs
+        ) {
+            revert NotInTime();
+        }
 
         bytes32 hash = keccak256(
-            abi.encodePacked(tokenId, score, address(badge), address(msg.sender))
+            abi.encodePacked(
+                tokenId,
+                score,
+                address(badge),
+                address(msg.sender)
+            )
         );
-        require(_verify(hash, signature), "Invalid signer");
+        if (!_verify(hash, signature)) {
+            revert InvalidSigner();
+        }
 
         badge.mint(msg.sender, tokenId, 1, "0x");
 
@@ -151,18 +177,27 @@ contract QuestMinter is Ownable {
         badge.updateScore(msg.sender, tokenId, score);
     }
 
-    function updateScore(uint256 tokenId, uint256 score, bytes calldata signature)external{
-        require(claimed[tokenId][msg.sender], "not claimed yet");
-        
+    function updateScore(
+        uint256 tokenId,
+        uint256 score,
+        bytes calldata signature
+    ) external {
         IQuest.QuestData memory questData = quest.getQuest(tokenId);
-        if (questData.endTs > 0)
-            require(block.timestamp <= questData.endTs, "Not in time");
-            // TODO: if...revert error
+        if (block.timestamp > questData.endTs) {
+            revert NotInTime();
+        }
 
         bytes32 hash = keccak256(
-            abi.encodePacked(tokenId, score, address(badge), address(msg.sender))
+            abi.encodePacked(
+                tokenId,
+                score,
+                address(badge),
+                address(msg.sender)
+            )
         );
-        require(_verify(hash, signature), "Invalid signer");
+        if (!_verify(hash, signature)) {
+            revert InvalidSigner();
+        }
 
         badge.updateScore(msg.sender, tokenId, score);
     }
@@ -180,26 +215,29 @@ contract QuestMinter is Ownable {
                 address(msg.sender)
             )
         );
-        require(_verify(hash, signature), "Invalid signer");
+        if (!_verify(hash, signature)) {
+            revert InvalidSigner();
+        }
 
         uint256 numOfReceivers = receivers.length;
-        require(numOfReceivers > 0, "Invalid receivers");
-        require(numOfReceivers == tokenIds.length, "Invalid receivers length");
-
-        IQuest.QuestData memory questData = quest.getQuest(tokenIds[0]);
-        require(
-            badge.tokenSupply(tokenIds[0]) + 1 <= questData.supply,
-            "Over limit"
-        );
-
-        require(block.timestamp > questData.startTs, "Not in time");
-        require(block.timestamp <= questData.endTs, "Not in time");
+        if (numOfReceivers == 0) {
+            revert InvalidReceivers();
+        }
+        if (numOfReceivers != tokenIds.length) {
+            revert InvalidTokenIds();
+        }
 
         for (uint256 i = 0; i < numOfReceivers; i++) {
+            IQuest.QuestData memory questData = quest.getQuest(tokenIds[i]);
+            if (badge.tokenSupply(tokenIds[i]) + 1 > questData.supply) continue;
+
+            if (
+                block.timestamp < questData.startTs ||
+                block.timestamp > questData.endTs
+            ) continue;
+
             address receiver = receivers[i];
-            if(claimed[tokenIds[i]][receiver]) {
-                continue;
-            }
+            if (claimed[tokenIds[i]][receiver]) continue;
 
             claimed[tokenIds[i]][receiver] = true;
 
@@ -209,19 +247,17 @@ contract QuestMinter is Ownable {
         }
     }
 
-    function _verify(bytes32 hash, bytes calldata signature)
-        internal
-        view
-        returns (bool)
-    {
+    function _verify(
+        bytes32 hash,
+        bytes calldata signature
+    ) internal view returns (bool) {
         return (_recover(hash, signature) == signer);
     }
 
-    function _recover(bytes32 msgHash, bytes calldata signature)
-        internal
-        pure
-        returns (address)
-    {
+    function _recover(
+        bytes32 msgHash,
+        bytes calldata signature
+    ) internal pure returns (address) {
         return msgHash.toEthSignedMessageHash().recover(signature);
     }
 }

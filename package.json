@@ -4,6 +4,7 @@
   "main": "index.js",
   "license": "MIT",
   "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^1.0.6",
     "@nomiclabs/hardhat-solhint": "^3.0.0",
     "eslint": "^7.5.0",
     "eslint-config-airbnb": "^18.2.0",
