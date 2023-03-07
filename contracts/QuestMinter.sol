@@ -23,8 +23,6 @@ contract QuestMinter is Ownable {
     uint256 public startTokenId;
     address public signer;
 
-    mapping(uint256 => mapping(address => bool)) claimed; //TODO delete, use balanceOf instead
-
     event Claimed(uint256 indexed tokenId, address indexed sender);
     event SignerChanged(address signer);
     event Donation(address from, address to, uint256 amount);
@@ -152,6 +150,7 @@ contract QuestMinter is Ownable {
 
         bytes32 hash = keccak256(
             abi.encodePacked(
+                "claim",
                 tokenId,
                 score,
                 address(badge),
@@ -163,8 +162,6 @@ contract QuestMinter is Ownable {
         }
 
         badge.mint(msg.sender, tokenId, 1, "0x");
-
-        claimed[tokenId][msg.sender] = true;
 
         emit Claimed(tokenId, msg.sender);
 
@@ -187,9 +184,9 @@ contract QuestMinter is Ownable {
             revert NotInTime();
         }
 
-        // TODO: same signature params above
         bytes32 hash = keccak256(
             abi.encodePacked(
+                "updateScore",
                 tokenId,
                 score,
                 address(badge),
@@ -229,22 +226,20 @@ contract QuestMinter is Ownable {
         }
 
         for (uint256 i = 0; i < numOfReceivers; i++) {
-            IQuest.QuestData memory questData = quest.getQuest(tokenIds[i]);
-            if (badge.tokenSupply(tokenIds[i]) + 1 > questData.supply) continue;
+            address receiver = receivers[i];
+            uint tokenId = tokenIds[i];
+
+            IQuest.QuestData memory questData = quest.getQuest(tokenId);
+            if (badge.tokenSupply(tokenId) + 1 > questData.supply) continue;
 
             if (
                 block.timestamp < questData.startTs ||
                 block.timestamp > questData.endTs
             ) continue;
 
-            address receiver = receivers[i];
-            if (claimed[tokenIds[i]][receiver]) continue;
+            badge.mint(receiver, tokenId, 1, "0x");
 
-            claimed[tokenIds[i]][receiver] = true;
-
-            badge.mint(receiver, tokenIds[i], 1, "0x");
-
-            emit Airdroped(tokenIds[i], receiver);
+            emit Airdroped(tokenId, receiver);
         }
     }
 
