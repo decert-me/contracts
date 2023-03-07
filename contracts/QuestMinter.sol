@@ -2,12 +2,19 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interface/IBadge.sol";
 import "./interface/IQuest.sol";
 
-contract QuestMinter is Initializable, OwnableUpgradeable {
+contract QuestMinter is Ownable {
+    error NotInTime();
+    error InvalidSigner();
+    error NotCreator();
+    error NonexistentToken();
+    error OverLimit();
+    error InvalidReceivers();
+    error InvalidTokenIds();
+
     using ECDSA for bytes32;
 
     IQuest public quest;
@@ -16,17 +23,12 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
     uint256 public startTokenId;
     address public signer;
 
-    mapping(uint256 => mapping(address => bool)) claimed;
-    mapping(uint256 => mapping(address => uint256)) public scores;
-
     event Claimed(uint256 indexed tokenId, address indexed sender);
     event SignerChanged(address signer);
     event Donation(address from, address to, uint256 amount);
     event Airdroped(uint256 indexed tokenId, address indexed to);
 
-    function initialize(address badge_, address quest_) public initializer {
-        __Ownable_init();
-
+    constructor(address badge_, address quest_) {
         badge = IBadge(badge_);
         quest = IQuest(quest_);
         signer = msg.sender;
@@ -38,6 +40,8 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
         signer = signer_;
         emit SignerChanged(signer_);
     }
+
+    // add createQuest whitelist
 
     function createQuest(
         IQuest.QuestData calldata questData,
@@ -60,7 +64,9 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
                 address(msg.sender)
             )
         );
-        require(_verify(hash, signature), "Invalid signer");
+        if (!_verify(hash, signature)) {
+            revert InvalidSigner();
+        }
 
         while (badge.exists(startTokenId)) {
             startTokenId += 1;
@@ -72,45 +78,90 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
         startTokenId += 1;
     }
 
+    function modifyQuest(
+        uint256 tokenId,
+        IQuest.QuestData calldata questData,
+        bytes calldata signature
+    ) external {
+        if (quest.ownerOf(tokenId) != msg.sender) {
+            revert NotCreator();
+        }
+
+        uint32 startTs = questData.startTs;
+        uint32 endTs = questData.endTs;
+        uint192 supply = questData.supply;
+        string memory title = questData.title;
+        string memory uri = questData.uri;
+
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                tokenId,
+                startTs,
+                endTs,
+                supply,
+                title,
+                uri,
+                address(this),
+                address(msg.sender)
+            )
+        );
+        if (!_verify(hash, signature)) {
+            revert InvalidSigner();
+        }
+
+        quest.modifyQuest(tokenId, questData);
+    }
+
     function setBadgeURI(
         uint256 tokenId,
         string memory uri,
         bytes calldata signature
     ) external {
-        require(quest.ownerOf(tokenId) == msg.sender, "Not creator");
+        if (quest.ownerOf(tokenId) != msg.sender) {
+            revert NotCreator();
+        }
 
         bytes32 hash = keccak256(
             abi.encodePacked(tokenId, uri, address(badge), address(msg.sender))
         );
-        require(_verify(hash, signature), "Invalid signer");
+        if (!_verify(hash, signature)) {
+            revert InvalidSigner();
+        }
 
         quest.updateURI(tokenId, uri);
         badge.setCustomURI(tokenId, uri);
     }
 
-    function claim(uint256 tokenId, uint256 score, bytes calldata signature) external payable {
-        require(!claimed[tokenId][msg.sender], "Aleady claimed");
-        require(badge.exists(tokenId), "None existent token");
-
+    function claim(
+        uint256 tokenId,
+        uint256 score,
+        bytes calldata signature
+    ) external payable {
         IQuest.QuestData memory questData = quest.getQuest(tokenId);
-        if (questData.supply > 0)
-            require(
-                badge.tokenSupply(tokenId) < questData.supply,
-                "Over limit"
-            );
-
-        require(block.timestamp > questData.startTs, "Not in time");
-        if (questData.endTs > 0)
-            require(block.timestamp <= questData.endTs, "Not in time");
+        if (badge.tokenSupply(tokenId) >= questData.supply) {
+            revert OverLimit();
+        }
+        if (
+            block.timestamp < questData.startTs ||
+            block.timestamp > questData.endTs
+        ) {
+            revert NotInTime();
+        }
 
         bytes32 hash = keccak256(
-            abi.encodePacked(tokenId, score, address(badge), address(msg.sender))
+            abi.encodePacked(
+                "claim",
+                tokenId,
+                score,
+                address(badge),
+                address(msg.sender)
+            )
         );
-        require(_verify(hash, signature), "Invalid signer");
+        if (!_verify(hash, signature)) {
+            revert InvalidSigner();
+        }
 
         badge.mint(msg.sender, tokenId, 1, "0x");
-
-        claimed[tokenId][msg.sender] = true;
 
         emit Claimed(tokenId, msg.sender);
 
@@ -120,62 +171,71 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
             emit Donation(msg.sender, creator, msg.value);
         }
 
-        scores[tokenId][msg.sender] = score;
+        badge.updateScore(msg.sender, tokenId, score);
     }
 
-    function updateScore(uint256 tokenId, uint256 score, bytes calldata signature)external{
-        require(claimed[tokenId][msg.sender], "not claimed yet");
-        
+    function updateScore(
+        uint256 tokenId,
+        uint256 score,
+        bytes calldata signature
+    ) external {
         IQuest.QuestData memory questData = quest.getQuest(tokenId);
-        if (questData.endTs > 0)
-            require(block.timestamp <= questData.endTs, "Not in time");
+        if (block.timestamp > questData.endTs) {
+            revert NotInTime();
+        }
 
         bytes32 hash = keccak256(
-            abi.encodePacked(tokenId, score, address(badge), address(msg.sender))
+            abi.encodePacked(
+                "updateScore",
+                tokenId,
+                score,
+                address(badge),
+                address(msg.sender)
+            )
         );
-        require(_verify(hash, signature), "Invalid signer");
+        if (!_verify(hash, signature)) {
+            revert InvalidSigner();
+        }
 
-        scores[tokenId][msg.sender] = score;
+        badge.updateScore(msg.sender, tokenId, score);
     }
 
     function airdropBadge(
-        uint256 tokenId,
+        uint256[] calldata tokenIds,
         address[] calldata receivers,
         bytes calldata signature
     ) external {
         bytes32 hash = keccak256(
             abi.encodePacked(
                 "airdropBadge",
-                tokenId,
+                tokenIds,
                 address(badge),
                 address(msg.sender)
             )
         );
-
-        require(_verify(hash, signature), "Invalid signer");
+        if (!_verify(hash, signature)) {
+            revert InvalidSigner();
+        }
 
         uint256 numOfReceivers = receivers.length;
-        require(numOfReceivers > 0, "Invalid receivers");
-
-        IQuest.QuestData memory questData = quest.getQuest(tokenId);
-        if (questData.supply > 0)
-            require(
-                badge.tokenSupply(tokenId) + numOfReceivers <= questData.supply,
-                "Over limit"
-            );
-
-        require(block.timestamp > questData.startTs, "Not in time");
-
-        if (questData.endTs > 0)
-            require(block.timestamp <= questData.endTs, "Not in time");
+        if (numOfReceivers == 0) {
+            revert InvalidReceivers();
+        }
+        if (numOfReceivers != tokenIds.length) {
+            revert InvalidTokenIds();
+        }
 
         for (uint256 i = 0; i < numOfReceivers; i++) {
             address receiver = receivers[i];
-            if(claimed[tokenId][receiver]) {
-                continue;
-            }
+            uint tokenId = tokenIds[i];
 
-            claimed[tokenId][receiver] = true;
+            IQuest.QuestData memory questData = quest.getQuest(tokenId);
+            if (badge.tokenSupply(tokenId) + 1 > questData.supply) continue;
+
+            if (
+                block.timestamp < questData.startTs ||
+                block.timestamp > questData.endTs
+            ) continue;
 
             badge.mint(receiver, tokenId, 1, "0x");
 
@@ -183,19 +243,17 @@ contract QuestMinter is Initializable, OwnableUpgradeable {
         }
     }
 
-    function _verify(bytes32 hash, bytes calldata signature)
-        internal
-        view
-        returns (bool)
-    {
+    function _verify(
+        bytes32 hash,
+        bytes calldata signature
+    ) internal view returns (bool) {
         return (_recover(hash, signature) == signer);
     }
 
-    function _recover(bytes32 msgHash, bytes calldata signature)
-        internal
-        pure
-        returns (address)
-    {
+    function _recover(
+        bytes32 msgHash,
+        bytes calldata signature
+    ) internal pure returns (address) {
         return msgHash.toEthSignedMessageHash().recover(signature);
     }
 }

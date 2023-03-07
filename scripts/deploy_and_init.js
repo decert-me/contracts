@@ -1,6 +1,5 @@
 const { ethers, network, upgrades } = require("hardhat");
 const { writeAddr } = require('./recoder.js');
-const { getImplementationAddress } = require('@openzeppelin/upgrades-core');
 
 async function main() {
     let [owner] = await ethers.getSigners();
@@ -14,7 +13,7 @@ async function main() {
     let badgeInstance;
     {
         const BadgeUri = '';
-        badgeInstance = await upgrades.deployProxy(Badge, [BadgeUri]);
+        badgeInstance = await Badge.deploy(BadgeUri);
         await badgeInstance.deployed();
         console.log('\nBadge contract deployed to:', badgeInstance.address);
     }
@@ -22,7 +21,7 @@ async function main() {
     // 部署Quest
     let questInstance;
     {
-        questInstance = await upgrades.deployProxy(Quest, [badgeInstance.address], { initializer: 'initialize(address)' });
+        questInstance = await Quest.deploy(badgeInstance.address);
         await questInstance.deployed();
         console.log('\nQuest contract deployed to:', questInstance.address);
     }
@@ -33,9 +32,20 @@ async function main() {
         const badgeAddr = badgeInstance.address;
         const questAddr = questInstance.address;
 
-        questMinterInstance = await upgrades.deployProxy(QuestMinter, [badgeAddr, questAddr]);
+        questMinterInstance = await QuestMinter.deploy(badgeAddr, questAddr);
         await questMinterInstance.deployed();
         console.log('\nQuestMinter contract deployed to:', questMinterInstance.address);
+    }
+
+    // 部署 QuestMetadata
+    let questMetadataInstance;
+    {
+        const badgeAddr = badgeInstance.address;
+        const questAddr = questInstance.address;
+
+        questMetadataInstance = await QuestMinter.deploy(badgeAddr, questAddr);
+        await questMetadataInstance.deployed();
+        console.log('\nQuestMetadata contract deployed to:', questMetadataInstance.address);
     }
 
     // 初始化操作
@@ -45,6 +55,10 @@ async function main() {
 
         await questInstance.connect(owner).setMinter(questMinterInstance.address, true);
         console.log('\nQuest setMinter', questMinterInstance.address);
+
+        await questInstance.connect(owner).setMetaContract(questMetadataInstance.address);
+        console.log('\nQuest setMetaContract', questMetadataInstance.address);
+
     }
 
     {
@@ -52,18 +66,17 @@ async function main() {
         await writeAddr(badgeInstance.address, 'Badge', network.name);
         await writeAddr(questInstance.address, 'Quest', network.name);
         await writeAddr(questMinterInstance.address, 'QuestMinter', network.name);
+        await writeAddr(questMetadataInstance.address, 'QuestMetadata', network.name);
     }
 
     {
-        const badgeLogicAddr = await getImplementationAddress(ethers.provider, badgeInstance.address);
-        const quesLogicAddr = await getImplementationAddress(ethers.provider, questInstance.address);
-        const quesMinterLogicAddr = await getImplementationAddress(ethers.provider, questMinterInstance.address);
 
         // 开源认证
         if (!['hardhat', 'localhost'].includes(network.name)) {
-            console.log(`\nPlease verify implementation address [Badge]:\n npx hardhat verify ${badgeLogicAddr} --network ${network.name}`);
-            console.log(`\nPlease verify implementation address [Quest]:\n npx hardhat verify ${quesLogicAddr} --network ${network.name}`);
-            console.log(`\nPlease verify implementation address [QuestMinter]:\n npx hardhat verify ${quesMinterLogicAddr} --network ${network.name}`);
+            console.log(`\nPlease verify contract address [Badge]:\n npx hardhat verify ${badgeInstance.address} --network ${network.name}`);
+            console.log(`\nPlease verify contract address [Quest]:\n npx hardhat verify ${questInstance.address} --network ${network.name}`);
+            console.log(`\nPlease verify contract address [QuestMinter]:\n npx hardhat verify ${questMinterInstance.address} --network ${network.name}`);
+            console.log(`\nPlease verify contract address [questMetadata]:\n npx hardhat verify ${questMetadataInstance.address} --network ${network.name}`);
         }
     }
 }

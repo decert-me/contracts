@@ -3,7 +3,7 @@ const { writeAddr } = require('./recoder.js');
 
 async function main() {
     let [owner] = await ethers.getSigners();
-    let contractName = 'QuestMinter';
+    let contractName = 'QuestMetadata';
     const contractFactory = await ethers.getContractFactory(contractName);
 
     const BadgeAddr = (require(`../deployments/${network.name}/Badge.json`)).address;
@@ -17,7 +17,7 @@ async function main() {
 
 
     if (!['hardhat', 'localhost'].includes(network.name)) {
-        console.log(`[${contractName}] Please verify implementation contract : npx hardhat verify ${contract.address} --network ${network.name}`);
+        console.log(`[${contractName}] Please verify contract : npx hardhat verify ${contract.address} --network ${network.name}`);
     }
 }
 

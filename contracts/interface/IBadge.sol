@@ -22,4 +22,6 @@ interface IBadge {
         uint256 _quantity,
         bytes memory _data
     ) external;
+
+    function updateScore(address _to, uint256 _tokenId, uint256 _score) external;
 }

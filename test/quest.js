@@ -6,12 +6,8 @@ use(solidity);
 
 const provider = new MockProvider();
 const REVERT_MSGS = {
-  'OnlyMinter': 'Only minter',
-  'TokenIdAlreadyExists': 'TokenId already exists',
   'AlreadyMinted': 'ERC721: token already minted',
-  'NonexistentTokenUri': 'ERC721Metadata: URI query for nonexistent token',
   'SBTNonTransferable': 'SBT:non-transferable',
-  'NoneExistentToken':'None existent token',
 }
 
 async function revertBlock(snapshotId) {
@@ -57,13 +53,16 @@ describe("Quest", async () => {
 
   before(async () => {
     const Badge = await ethers.getContractFactory('Badge');
-    badgeContract = await upgrades.deployProxy(Badge, [uri]);
+    badgeContract = await Badge.deploy(uri);
     await badgeContract.deployed();
 
     const Quest = await ethers.getContractFactory("Quest");
-
-    questContract = await upgrades.deployProxy(Quest, [badgeContract.address], { initializer: 'initialize(address)' });
+    questContract = await Quest.deploy(badgeContract.address);
     await questContract.deployed();
+
+    const QuestMetadata = await ethers.getContractFactory("QuestMetadata");
+    questMetadataContract = await QuestMetadata.deploy(badgeContract.address, questContract.address);
+    await questMetadataContract.deployed();
 
     accounts = await ethers.getSigners();
     owner = accounts[0];
@@ -72,6 +71,8 @@ describe("Quest", async () => {
     // set minter
     await questContract.setMinter(minter.address, true);
     await badgeContract.setMinter(minter.address, true);
+    // set meta 
+    await questContract.setMetaContract(questMetadataContract.address)
 
     snapshotId = await ethers.provider.send("evm_snapshot");
   })
@@ -105,8 +106,7 @@ describe("Quest", async () => {
 
     it("Invalid minter", async () => {
       let addr = AddressZero;
-      await expect(questContract.connect(owner).setMinter(addr, false)).to.be.revertedWith('Invalid minter');
-
+      await expect(questContract.connect(owner).setMinter(addr, false)).to.be.revertedWithCustomError(questContract, 'InvalidMinter');
     });
 
     it("not owner should revert", async () => {
@@ -124,7 +124,7 @@ describe("Quest", async () => {
     it("not minter should revert", async () => {
       let { to, id, questData, data } = mintParams;
 
-      await expect(questContract.connect(accounts[2]).mint(to, id, questData, data)).to.be.revertedWith(REVERT_MSGS['OnlyMinter']);
+      await expect(questContract.connect(accounts[2]).mint(to, id, questData, data)).to.be.revertedWithCustomError(questContract, 'OnlyMinter');
     });
 
     it("minter mint", async () => {
@@ -165,14 +165,34 @@ describe("Quest", async () => {
       let { to, questData, data } = mintParams;
       await expect(
         questContract.connect(minter).mint(to, 1, questData, data)
-      ).to.be.revertedWith(REVERT_MSGS['NoneExistentToken']);
-    }); 
+      ).to.be.revertedWithCustomError(questContract, 'NonexistentToken');
+    });
   })
+
+  describe('modifyQuest()', async () => {
+    beforeEach(async () => {
+      let { creator, id, initialSupply, uri, data } = createParams;
+      await badgeContract.connect(minter).create(creator, id, initialSupply, uri, data)
+    });
+
+    it("not minter should revert", async () => {
+      let { to, id, questData, data } = mintParams;
+
+      await expect(questContract.connect(accounts[2]).modifyQuest(id, questData)).to.be.revertedWithCustomError(questContract, 'OnlyMinter');
+    });
+
+    it("modify claimed should revert", async () => {
+      let { to, id, questData, data } = mintParams;
+      await badgeContract.connect(minter).mint(to, id, 1, data);
+
+      await expect(questContract.connect(minter).modifyQuest(id, questData)).to.be.revertedWithCustomError(questContract, 'ClaimedCannotModify');
+    });
+  });
 
   describe('getQuest()', async () => {
     beforeEach(async () => {
       let { creator, id, initialSupply, uri, data } = createParams;
-      await badgeContract.connect(minter).create(creator, id, initialSupply, uri, data)
+      await badgeContract.connect(minter).create(creator, id, initialSupply, uri, data);
     });
 
     it("None existent quest", async () => {
@@ -206,7 +226,10 @@ describe("Quest", async () => {
     });
 
     it("should revert NonexistentTokenUri", async () => {
-      await expect(questContract.tokenURI(0)).to.be.revertedWith(REVERT_MSGS['NonexistentTokenUri']);
+      await expect(questContract.tokenURI(1)).to.be.revertedWithCustomError(
+        questMetadataContract,
+        "NonexistentTokenUri"
+      );
     });
 
     it("uri", async () => {
@@ -236,4 +259,20 @@ describe("Quest", async () => {
       ).to.be.revertedWith(REVERT_MSGS['SBTNonTransferable']);
     });
   })
+
+  describe('SetMetaContract', async () => {
+    it("should revert set zero address", async () => {
+      await expect(
+        questContract.connect(owner).setMetaContract(AddressZero)
+      ).to.revertedWithCustomError(questContract, 'ZeroAddress');
+    });
+
+    it("should set success", async () => {
+      expect(await questContract.meta()).to.equal(questMetadataContract.address);
+
+      await questContract.connect(owner).setMetaContract(questContract.address);
+
+      expect(await questContract.meta()).to.equal(questContract.address);
+    });
+  });
 });

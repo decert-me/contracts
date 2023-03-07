@@ -1,26 +1,20 @@
 const { ethers, network, upgrades } = require("hardhat");
 const { writeAddr } = require('./recoder.js');
-const { getImplementationAddress } = require('@openzeppelin/upgrades-core');
 
 
 async function main() {
   let [owner] = await ethers.getSigners();
   let contractName = 'Badge';
-  const contract = await ethers.getContractFactory(contractName);
+  const contractFactory = await ethers.getContractFactory(contractName);
 
-  let params = [''];
+  const contract = await contractFactory.deploy('');
+  await contract.deployed();
 
-  const proxy = await upgrades.deployProxy(contract, params);
-  await proxy.deployed();
-
-  console.log(`[${contractName}] proxy contract deployed to:`, proxy.address);
-  await writeAddr(proxy.address, contractName, network.name);
-
-  const logicAddr = await getImplementationAddress(ethers.provider, proxy.address);
-  console.log(`[${contractName}] implementation contract deployed to:`, logicAddr);
+  console.log(`[${contractName}] contract deployed to:`, contract.address);
+  await writeAddr(contract.address, contractName, network.name);
 
   if (!['hardhat', 'localhost'].includes(network.name)) {
-    console.log(`[${contractName}] Please verify implementation contract : npx hardhat verify ${logicAddr} --network ${network.name}`);
+    console.log(`[${contractName}] Please verify contract : npx hardhat verify ${contract.address} --network ${network.name}`);
   }
 }
 
