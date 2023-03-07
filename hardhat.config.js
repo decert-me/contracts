@@ -48,6 +48,14 @@ module.exports = {
       },
       chainId: 137,
     },
+    mumbai: {
+      url: 'https://rpc-mumbai.maticvigil.com',
+      gasPrice: 30000000000,
+      accounts: {
+        mnemonic,
+      },
+      chainId: 80001,
+    }
   },
   solidity: {
     compilers: [{
