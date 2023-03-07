@@ -76,7 +76,7 @@ contract QuestMetadata is IMetadata {
         IQuest.QuestData memory questData = quest.getQuest(tokenId);
         string memory title = questData.title;
         string memory uri = questData.uri;
-        uint256 tokenbalance = badge.tokenSupply(tokenId); //TODO: Camel-Case
+        uint256 tokenBalance = badge.tokenSupply(tokenId);
 
         return
             string(
@@ -93,7 +93,7 @@ contract QuestMetadata is IMetadata {
                     '<text id="challenger-title" mask="url(#mask-4)" font-family="PingFangSC-Semibold, PingFang SC" font-size="16" font-weight="500" fill="#FFFFFF"><tspan x="33" y="198">Challenger Passed</tspan></text><text id="ipfs-value" opacity="0.8" mask="url(#mask-4)" font-family="PingFangSC-Regular, PingFang SC" font-size="11" font-weight="normal" fill="#FFFFFF"><tspan x="33" y="161">',
                     uri,
                     '</tspan></text><text id="challenger-value" opacity="0.8" mask="url(#mask-4)" font-family="PingFangSC-Regular, PingFang SC" font-size="11" font-weight="normal" fill="#FFFFFF"><tspan x="33" y="217">',
-                    Strings.toString(tokenbalance),
+                    Strings.toString(tokenBalance),
                     "</tspan></text></g></svg>"
                 )
             );
