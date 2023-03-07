@@ -3,5 +3,6 @@
   "function exists(uint256) view returns (bool)",
   "function mint(address,uint256,uint256,bytes)",
   "function setCustomURI(uint256,string)",
-  "function tokenSupply(uint256) view returns (uint256)"
+  "function tokenSupply(uint256) view returns (uint256)",
+  "function updateScore(address,uint256,uint256)"
 ]

@@ -1,0 +1,3 @@
+[
+  "function tokenURI(uint256) view returns (string)"
+]

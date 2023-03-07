@@ -1,6 +1,6 @@
 [
+  "constructor(string)",
   "event ApprovalForAll(address indexed,address indexed,bool)",
-  "event Initialized(uint8)",
   "event TransferBatch(address indexed,address indexed,address indexed,uint256[],uint256[])",
   "event TransferSingle(address indexed,address indexed,address indexed,uint256,uint256)",
   "event URI(string,uint256 indexed)",

@@ -1,6 +1,14 @@
 [
+  "constructor(string)",
+  "error AlreadyHoldsBadge()",
+  "error InvalidMinter()",
+  "error NonApprovableERC1155Token()",
+  "error NonTransferrableERC1155Token()",
+  "error NonexistentToken()",
+  "error NotClaimedYet()",
+  "error OnlyMinter()",
+  "error TokenIdAlreadyExists()",
   "event ApprovalForAll(address indexed,address indexed,bool)",
-  "event Initialized(uint8)",
   "event OwnershipTransferred(address indexed,address indexed)",
   "event SetMinter(address,bool)",
   "event TransferBatch(address indexed,address indexed,address indexed,uint256[],uint256[])",
@@ -11,7 +19,6 @@
   "function create(address,uint256,uint256,string,bytes) returns (uint256)",
   "function creators(uint256) view returns (address)",
   "function exists(uint256) view returns (bool)",
-  "function initialize(string)",
   "function isApprovedForAll(address,address) view returns (bool)",
   "function mint(address,uint256,uint256,bytes)",
   "function minters(address) view returns (bool)",
@@ -20,6 +27,7 @@
   "function renounceOwnership()",
   "function safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)",
   "function safeTransferFrom(address,address,uint256,uint256,bytes)",
+  "function scores(uint256,address) view returns (uint256)",
   "function setApprovalForAll(address,bool)",
   "function setCustomURI(uint256,string)",
   "function setMinter(address,bool)",
@@ -27,5 +35,6 @@
   "function symbol() view returns (string)",
   "function tokenSupply(uint256) view returns (uint256)",
   "function transferOwnership(address)",
+  "function updateScore(address,uint256,uint256)",
   "function uri(uint256) view returns (string)"
 ]
