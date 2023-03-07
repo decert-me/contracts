@@ -23,7 +23,7 @@ contract QuestMinter is Ownable {
     uint256 public startTokenId;
     address public signer;
 
-    mapping(uint256 => mapping(address => bool)) claimed;
+    mapping(uint256 => mapping(address => bool)) claimed; //TODO delete, use balanceOf instead
 
     event Claimed(uint256 indexed tokenId, address indexed sender);
     event SignerChanged(address signer);
@@ -187,6 +187,7 @@ contract QuestMinter is Ownable {
             revert NotInTime();
         }
 
+        // TODO: same signature params above
         bytes32 hash = keccak256(
             abi.encodePacked(
                 tokenId,

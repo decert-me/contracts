@@ -76,7 +76,7 @@ contract QuestMetadata is IMetadata {
         IQuest.QuestData memory questData = quest.getQuest(tokenId);
         string memory title = questData.title;
         string memory uri = questData.uri;
-        uint256 tokenbalance = badge.tokenSupply(tokenId);
+        uint256 tokenbalance = badge.tokenSupply(tokenId); //TODO: Camel-Case
 
         return
             string(

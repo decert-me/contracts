@@ -66,6 +66,7 @@ async function main() {
         await writeAddr(badgeInstance.address, 'Badge', network.name);
         await writeAddr(questInstance.address, 'Quest', network.name);
         await writeAddr(questMinterInstance.address, 'QuestMinter', network.name);
+        //TODO: record questMetadataInstance address
     }
 
     {
