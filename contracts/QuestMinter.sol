@@ -12,8 +12,7 @@ contract QuestMinter is Ownable {
     error NotCreator();
     error NonexistentToken();
     error OverLimit();
-    error InvalidReceivers();
-    error InvalidTokenIds();
+    error InvalidArray();
 
     using ECDSA for bytes32;
 
@@ -203,6 +202,7 @@ contract QuestMinter is Ownable {
     function airdropBadge(
         uint256[] calldata tokenIds,
         address[] calldata receivers,
+        uint256[] calldata scores,
         bytes calldata signature
     ) external {
         bytes32 hash = keccak256(
@@ -218,16 +218,18 @@ contract QuestMinter is Ownable {
         }
 
         uint256 numOfReceivers = receivers.length;
-        if (numOfReceivers == 0) {
-            revert InvalidReceivers();
-        }
-        if (numOfReceivers != tokenIds.length) {
-            revert InvalidTokenIds();
+        if (
+            numOfReceivers == 0 ||
+            numOfReceivers != tokenIds.length ||
+            numOfReceivers != scores.length
+        ) {
+            revert InvalidArray();
         }
 
         for (uint256 i = 0; i < numOfReceivers; i++) {
             address receiver = receivers[i];
             uint tokenId = tokenIds[i];
+            uint score = scores[i];
 
             IQuest.QuestData memory questData = quest.getQuest(tokenId);
             if (badge.tokenSupply(tokenId) + 1 > questData.supply) continue;
@@ -238,6 +240,7 @@ contract QuestMinter is Ownable {
             ) continue;
 
             badge.mint(receiver, tokenId, 1, "0x");
+            badge.updateScore(receiver, tokenId, score);
 
             emit Airdroped(tokenId, receiver);
         }

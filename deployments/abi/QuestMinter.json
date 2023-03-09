@@ -1,8 +1,7 @@
 [
   "constructor(address,address)",
-  "error InvalidReceivers()",
+  "error InvalidArray()",
   "error InvalidSigner()",
-  "error InvalidTokenIds()",
   "error NonexistentToken()",
   "error NotCreator()",
   "error NotInTime()",
@@ -12,7 +11,7 @@
   "event Donation(address,address,uint256)",
   "event OwnershipTransferred(address indexed,address indexed)",
   "event SignerChanged(address)",
-  "function airdropBadge(uint256[],address[],bytes)",
+  "function airdropBadge(uint256[],address[],uint256[],bytes)",
   "function badge() view returns (address)",
   "function claim(uint256,uint256,bytes) payable",
   "function createQuest(tuple(uint32,uint32,uint192,string,string),bytes)",
