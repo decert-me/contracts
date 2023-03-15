@@ -24,7 +24,7 @@ contract Badge is IBadge, Ownable, ERC1155 {
     event SetMinter(address minter, bool enabled);
 
     string public constant name = "Decert Badge";
-    string public constant symbol = "DBadge";
+    string public constant symbol = "Decert";
 
     constructor(string memory uri_) ERC1155(uri_) {}
 
@@ -54,7 +54,7 @@ contract Badge is IBadge, Ownable, ERC1155 {
         uint256[] memory amounts,
         bytes memory data
     ) internal virtual override(ERC1155) {
-        if (!(from == address(0) || to == address(0))) {
+        if (from != address(0) && to != address(0)) {
             revert NonTransferrableERC1155Token();
         }
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
