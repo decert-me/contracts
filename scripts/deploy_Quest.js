@@ -8,6 +8,10 @@ async function main() {
   const contractFactory = await ethers.getContractFactory(contractName);
 
   const BadgeAddr = (require(`../deployments/${network.name}/Badge.json`)).address;
+  if(!BadgeAddr) {
+    console.error('plaease deploy Badge contract first');
+    return;
+  }
 
   const contract = await contractFactory.deploy(BadgeAddr);
   await contract.deployed();
@@ -17,7 +21,7 @@ async function main() {
 
 
   if (!['hardhat', 'localhost'].includes(network.name)) {
-    console.log(`[${contractName}] Please verify contract : npx hardhat verify ${contract.address} --network ${network.name}`);
+    console.log(`[${contractName}] Please verify contract : npx hardhat verify ${contract.address} --network ${network.name} '${BadgeAddr}'`);
   }
 }
 

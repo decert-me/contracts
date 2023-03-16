@@ -42,7 +42,7 @@ module.exports = {
     },
     polygon: {
       url: 'https://polygon.llamarpc.com',
-      gasPrice: 1000000000,
+      gasPrice: 120000000000,
       accounts: {
         mnemonic,
       },
