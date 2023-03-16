@@ -34,7 +34,7 @@ describe("Badge", async () => {
   let badgeContract;
   let accounts, owner;
   const name = 'Decert Badge';
-  const symbol = 'DBadge';
+  const symbol = 'Decert';
   const uri = '';
   let snapshotId;
   let minter;
