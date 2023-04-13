@@ -28,4 +28,8 @@ interface IQuest is IERC721 {
     function updateURI(uint256 tokenId, string calldata uri) external;
 
     function modifyQuest(uint256 tokenId, QuestData calldata questData) external;
+
+    function exists(uint256 tokenId) external view returns (bool);
+
+    function numOfBadge(uint256 tokenId) external view returns (uint256);
 }

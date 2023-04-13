@@ -22,10 +22,10 @@ contract QuestMinter is Ownable {
     uint256 public startTokenId;
     address public signer;
 
-    event Claimed(uint256 indexed tokenId, address indexed sender);
+    event Claimed(uint256 indexed questId, address indexed sender);
     event SignerChanged(address signer);
     event Donation(address from, address to, uint256 amount);
-    event Airdroped(uint256 indexed tokenId, address indexed to);
+    event Airdroped(uint256 indexed questId, address indexed to);
 
     constructor(address badge_, address quest_) {
         badge = IBadge(badge_);
@@ -67,22 +67,22 @@ contract QuestMinter is Ownable {
             revert InvalidSigner();
         }
 
-        while (badge.exists(startTokenId)) {
+        while (quest.exists(startTokenId)) {
             startTokenId += 1;
         }
 
-        badge.create(msg.sender, startTokenId, 0, uri, "0x");
         quest.mint(msg.sender, startTokenId, questData, "0x");
 
         startTokenId += 1;
     }
 
     function modifyQuest(
-        uint256 tokenId,
+        uint256 questId,
         IQuest.QuestData calldata questData,
         bytes calldata signature
     ) external {
-        if (quest.ownerOf(tokenId) != msg.sender) {
+        // TODO: 时机限制
+        if (quest.ownerOf(questId) != msg.sender) {
             revert NotCreator();
         }
 
@@ -94,7 +94,7 @@ contract QuestMinter is Ownable {
 
         bytes32 hash = keccak256(
             abi.encodePacked(
-                tokenId,
+                questId,
                 startTs,
                 endTs,
                 supply,
@@ -108,36 +108,35 @@ contract QuestMinter is Ownable {
             revert InvalidSigner();
         }
 
-        quest.modifyQuest(tokenId, questData);
+        quest.modifyQuest(questId, questData);
     }
 
     function setBadgeURI(
-        uint256 tokenId,
+        uint256 questId,
         string memory uri,
         bytes calldata signature
     ) external {
-        if (quest.ownerOf(tokenId) != msg.sender) {
+        if (quest.ownerOf(questId) != msg.sender) {
             revert NotCreator();
         }
 
         bytes32 hash = keccak256(
-            abi.encodePacked(tokenId, uri, address(badge), address(msg.sender))
+            abi.encodePacked(questId, uri, address(badge), address(msg.sender))
         );
         if (!_verify(hash, signature)) {
             revert InvalidSigner();
         }
 
-        quest.updateURI(tokenId, uri);
-        badge.setCustomURI(tokenId, uri);
+        quest.updateURI(questId, uri);
     }
 
     function claim(
-        uint256 tokenId,
+        uint256 questId,
         uint256 score,
         bytes calldata signature
     ) external payable {
-        IQuest.QuestData memory questData = quest.getQuest(tokenId);
-        if (badge.tokenSupply(tokenId) >= questData.supply) {
+        IQuest.QuestData memory questData = quest.getQuest(questId);
+        if (quest.numOfBadge(questId) >= questData.supply) {
             revert OverLimit();
         }
         if (
@@ -150,7 +149,7 @@ contract QuestMinter is Ownable {
         bytes32 hash = keccak256(
             abi.encodePacked(
                 "claim",
-                tokenId,
+                questId,
                 score,
                 address(badge),
                 address(msg.sender)
@@ -160,25 +159,23 @@ contract QuestMinter is Ownable {
             revert InvalidSigner();
         }
 
-        badge.mint(msg.sender, tokenId, 1, "0x");
+        badge.claimWithScore(msg.sender, questId, score, "0x");
 
-        emit Claimed(tokenId, msg.sender);
+        emit Claimed(questId, msg.sender);
 
         if (msg.value > 0) {
-            address creator = quest.ownerOf(tokenId);
+            address creator = quest.ownerOf(questId);
             payable(creator).transfer(msg.value);
             emit Donation(msg.sender, creator, msg.value);
         }
-
-        badge.updateScore(msg.sender, tokenId, score);
     }
 
     function updateScore(
-        uint256 tokenId,
+        uint256 questId,
         uint256 score,
         bytes calldata signature
     ) external {
-        IQuest.QuestData memory questData = quest.getQuest(tokenId);
+        IQuest.QuestData memory questData = quest.getQuest(questId);
         if (block.timestamp > questData.endTs) {
             revert NotInTime();
         }
@@ -186,7 +183,7 @@ contract QuestMinter is Ownable {
         bytes32 hash = keccak256(
             abi.encodePacked(
                 "updateScore",
-                tokenId,
+                questId,
                 score,
                 address(badge),
                 address(msg.sender)
@@ -196,11 +193,11 @@ contract QuestMinter is Ownable {
             revert InvalidSigner();
         }
 
-        badge.updateScore(msg.sender, tokenId, score);
+        badge.updateScore(msg.sender, questId, score);
     }
 
     function airdropBadge(
-        uint256[] calldata tokenIds,
+        uint256[] calldata questIds,
         address[] calldata receivers,
         uint256[] calldata scores,
         bytes calldata signature
@@ -208,7 +205,7 @@ contract QuestMinter is Ownable {
         bytes32 hash = keccak256(
             abi.encodePacked(
                 "airdropBadge",
-                tokenIds,
+                questIds,
                 address(badge),
                 address(msg.sender)
             )
@@ -220,7 +217,7 @@ contract QuestMinter is Ownable {
         uint256 numOfReceivers = receivers.length;
         if (
             numOfReceivers == 0 ||
-            numOfReceivers != tokenIds.length ||
+            numOfReceivers != questIds.length ||
             numOfReceivers != scores.length
         ) {
             revert InvalidArray();
@@ -228,21 +225,19 @@ contract QuestMinter is Ownable {
 
         for (uint256 i = 0; i < numOfReceivers; i++) {
             address receiver = receivers[i];
-            uint tokenId = tokenIds[i];
+            uint questId = questIds[i];
             uint score = scores[i];
 
-            IQuest.QuestData memory questData = quest.getQuest(tokenId);
-            if (badge.tokenSupply(tokenId) + 1 > questData.supply) continue;
+            IQuest.QuestData memory questData = quest.getQuest(questId);
+            if (quest.numOfBadge(questId) + 1 > questData.supply) continue;
 
             if (
                 block.timestamp < questData.startTs ||
                 block.timestamp > questData.endTs
             ) continue;
 
-            badge.mint(receiver, tokenId, 1, "0x");
-            badge.updateScore(receiver, tokenId, score);
-
-            emit Airdroped(tokenId, receiver);
+            badge.claimWithScore(receiver, questId, score, "0x");
+            emit Airdroped(questId, receiver);
         }
     }
 

@@ -59,10 +59,6 @@ contract Quest is IQuest, SBTBase, Ownable {
         QuestData calldata questData,
         bytes memory data
     ) external override onlyMinter {
-        if (!badge.exists(tokenId)) {
-            revert NonexistentToken();
-        }
-
         _mint(to, tokenId);
         totalSupply += 1;
 
@@ -74,7 +70,8 @@ contract Quest is IQuest, SBTBase, Ownable {
         uint256 tokenId,
         QuestData calldata questData
     ) external onlyMinter {
-        if (badge.tokenSupply(tokenId) != 0) {
+        // 已有领取不可更改
+        if (this.numOfBadge(tokenId) != 0) {
             revert ClaimedCannotModify();
         }
 
@@ -110,5 +107,13 @@ contract Quest is IQuest, SBTBase, Ownable {
         uint256 tokenId
     ) public view virtual override returns (string memory) {
         return IMetadata(meta).tokenURI(tokenId);
+    }
+
+    function exists(uint256 tokenId) external view returns (bool){
+        return _exists(tokenId);
+    }
+
+    function numOfBadge(uint tokenId) external view returns (uint256){
+        return badge.getQuestBadgeNum(tokenId);
     }
 }
