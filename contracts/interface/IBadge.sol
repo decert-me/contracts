@@ -2,10 +2,16 @@
 pragma solidity ^0.8.0;
 
 interface IBadge {
+    struct QuestData {
+        uint32 startTs;
+        uint32 endTs;
+        string title;
+    }
+
     function claim(
         address to,
         uint256 questId,
-        bytes memory _data
+        string memory uri
     ) external;
 
 
@@ -13,7 +19,7 @@ interface IBadge {
         address to,
         uint256 questId,
         uint256 score,
-        bytes memory _data
+        string memory uri
     ) external;
 
     function updateScore(

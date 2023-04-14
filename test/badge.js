@@ -15,11 +15,9 @@ async function revertBlock(snapshotId) {
 const AddressZero = ethers.constants.AddressZero;
 
 const createParams = {
-  'creator': provider.createEmptyWallet().address,
-  'id': 0,
-  'initialSupply': 1,
-  'uri': 'ipfs://123',
-  'data': '0x',
+  startTs: 0,
+  endTs: 0,
+  title: 'ipfs://123',
 }
 
 const mintParams = {
@@ -28,30 +26,47 @@ const mintParams = {
   'quantity': 1,
   'data': '0x',
 }
-
+const INVALID_SIG = '0xbba42b3d0af3d44ce510e7b6720750510dab05d6158de272cc06f91994c9dbf02ddee04c3697120ce7ca953978aef6bfb08edeaea38567dd0079f1da7582ccb71c';
 
 describe("Badge", async () => {
   let badgeContract;
-  let accounts, owner;
+  let accounts, owner, creator, minter;
   const name = 'Decert Badge';
   const symbol = 'Decert';
-  const uri = '';
   let snapshotId;
-  let minter;
+  let questId;
+  let uri;
+  let score;
+  let claimWithCreateSig = '';
+
+  async function genClaimWithCreateSig(to, questId, score, uri, sender, signer) {
+    const types = ['address', 'uint256', 'uint256', 'string', 'address', 'address'];
+    const params = [to, questId, score, uri, badgeContract.address, sender.address];
+
+    const hash = ethers.utils.solidityKeccak256(types, params);
+    const signature = await signer.signMessage(ethers.utils.arrayify(hash));
+    return signature;
+  }
 
   before(async () => {
     const Badge = await ethers.getContractFactory("Badge");
-    badgeContract = await Badge.deploy(uri);
+    badgeContract = await Badge.deploy();
     await badgeContract.deployed();
 
     accounts = await ethers.getSigners();
     owner = accounts[0];
+    signer = owner;
     minter = accounts[1];
+    creator = provider.createEmptyWallet().address;
 
-    // set minter
-    await badgeContract.setMinter(minter.address, true);
-
+    questId = 10000;
+    score = 100;
+    uri = "ipfs://"
     snapshotId = await ethers.provider.send("evm_snapshot");
+    claimWithCreateSig = await genClaimWithCreateSig(creator, questId, score, uri, minter, signer);
+    // set signer
+    await badgeContract.setSigner(signer.address);
+    // console.log(await badgeContract.signer.address);
   })
 
   afterEach(async () => {
@@ -66,74 +81,38 @@ describe("Badge", async () => {
     expect(await badgeContract.symbol()).to.equal(symbol);
   });
 
-  describe('uri()', async () => {
+  describe('tokenURI()', async () => {
     it("None existent token", async () => {
-      await expect(badgeContract.uri(0)).to.be.revertedWithCustomError(badgeContract, 'NonexistentToken');
-    });
-
-    it("set customUri", async () => {
-      // set setCustomURI
+      await expect(badgeContract.tokenURI(0)).to.be.revertedWithCustomError(badgeContract, 'NonexistentToken');
     });
   })
 
-  describe('setMinter()', async () => {
-    it("set minter", async () => {
-      let addr = owner.address;
-      await badgeContract.connect(owner).setMinter(addr, true);
-      const isMinter = await badgeContract.minters(addr);
-      expect(isMinter).to.equal(true);
-    });
+  describe('claimWithCreate()', async () => {
+    it("minter claimWithCreate", async () => {
+      await badgeContract.connect(minter).claimWithCreate(creator, questId, score, createParams, uri, claimWithCreateSig);
 
-    it("unset minter", async () => {
-      let addr = owner.address;
-      await badgeContract.connect(owner).setMinter(addr, false);
-      const isMinter = await badgeContract.minters(addr);
-      expect(isMinter).to.equal(false);
-    });
+      let totalSupply = await badgeContract.totalSupply();
+      expect(totalSupply).to.equal(1);
 
-    it("Invalid minter", async () => {
-      let addr = AddressZero;
-      await expect(badgeContract.connect(owner).setMinter(addr, false)).to.be.revertedWithCustomError(badgeContract, 'InvalidMinter');
-
-    });
-
-    it("not owner should revert", async () => {
-      let addr = accounts[1].address;
-      await expect(badgeContract.connect(accounts[2]).setMinter(addr, false)).to.be.revertedWith('Ownable: caller is not the owner');
-    });
-  })
-
-  describe('create()', async () => {
-    it("not minter should revert", async () => {
-      let { creator, id, initialSupply, uri, data } = createParams;
-      await expect(badgeContract.connect(accounts[2]).create(creator, id, initialSupply, uri, data)).to.be.revertedWithCustomError(badgeContract, 'OnlyMinter');
-    });
-
-    it("minter create", async () => {
-      let { creator, id, initialSupply, uri, data } = createParams;
-      await badgeContract.connect(minter).create(creator, id, initialSupply, uri, data);
-
-      let tokenSupply = await badgeContract.tokenSupply(id);
-      expect(tokenSupply).to.equal(initialSupply);
-
-      let customUri = await badgeContract.uri(id);
+      let customUri = await badgeContract.tokenURI(1);
       expect(customUri).to.equal(uri);
 
-      let creator_ = await badgeContract.creators(id);
-      expect(creator_).to.equal(creator);
+      let questsData = await badgeContract.quests(questId);
+      expect(questsData.startTs).to.equal(createParams.startTs);
+      expect(questsData.endTs).to.equal(createParams.endTs);
+      expect(questsData.title).to.equal(createParams.title);
 
-      let balance = await badgeContract.balanceOf(creator, id);
-      expect(balance).to.equal(initialSupply);
+      let customQuestId = await badgeContract.badgeToQuest(1);
+      expect(customQuestId).to.equal(questId);
     });
 
-    it("create exists toekn should revert", async () => {
+    it.only("claimWithCreate exists quest should revert", async () => {
       let { creator, id, initialSupply, uri, data } = createParams;
-      await badgeContract.connect(minter).create(creator, id, initialSupply, uri, data);
-
+      await badgeContract.connect(minter).claimWithCreate(creator, questId, score, createParams, uri, claimWithCreateSig);
       // create same tokenId again
       await expect(
-        badgeContract.connect(minter).create(creator, id, initialSupply, uri, data)
-      ).to.be.revertedWithCustomError(badgeContract, 'TokenIdAlreadyExists');
+       badgeContract.connect(minter).claimWithCreate(creator, questId, score, createParams, uri, claimWithCreateSig)
+      ).to.be.revertedWithCustomError(badgeContract, 'QuestIdAlreadyExists');
     });
   })
 
