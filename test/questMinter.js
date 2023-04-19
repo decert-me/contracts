@@ -21,7 +21,6 @@ async function revertBlock(snapshotId) {
 const questData = {
   startTs: 0,
   endTs: 4294967295,
-  supply: 4294967295,
   title: 'title',
   uri: 'uri',
 }
@@ -78,24 +77,8 @@ describe('QuestMinter', async () => {
     return signature;
   }
 
-  async function genClaimSig(claimData, sender, signer) {
-    const { tokenId, score } = claimData;
-    const hash = ethers.utils.solidityKeccak256(['string', 'uint256', 'uint256', 'address', 'address'], ['claim', tokenId, score, badgeContract.address, sender.address]);
-    const signature = await signer.signMessage(ethers.utils.arrayify(hash));
-    return signature;
-  }
-
-  async function genUpdateScoreSig(UpdateScoreData, sender, signer) {
-    const { tokenId, score } = UpdateScoreData;
-    const hash = ethers.utils.solidityKeccak256(['string', 'uint256', 'uint256', 'address', 'address'], ['updateScore', tokenId, score, badgeContract.address, sender.address]);
-    const signature = await signer.signMessage(ethers.utils.arrayify(hash));
-    return signature;
-  }
-
-  async function genSetCustomURISig(customURIData, sender, signer) {
-    const { tokenId, uri } = customURIData;
-
-    const hash = ethers.utils.solidityKeccak256(['uint256', 'string', 'address', 'address'], [tokenId, uri, badgeContract.address, sender.address]);
+  async function genUpdateQuestBadgeNumSig(questId, badgeNum, sender, signer) {
+    const hash = ethers.utils.solidityKeccak256(['uint256', 'uint256', 'address', 'address'], [questId, badgeNum, questMinterContract.address, sender.address]);
     const signature = await signer.signMessage(ethers.utils.arrayify(hash));
     return signature;
   }
@@ -234,7 +217,6 @@ describe('QuestMinter', async () => {
 
       modifyQuestSig = await genModifySig(InitStartTokenId, questDataNew, creator, signer);
       createQuestSig = await genCreateSig(questData, creator, signer);
-      claimSig = await genClaimSig({ 'tokenId': InitStartTokenId, 'score': score }, claimer, signer);
     })
 
     it('should revert "Invalid signer"', async () => {
@@ -270,6 +252,44 @@ describe('QuestMinter', async () => {
       await expect(
         questMinterContract.connect(accounts[3]).modifyQuest(InitStartTokenId, questDataNew, modifyQuestSig)
       ).to.revertedWithCustomError(questMinterContract, 'NotCreator');
+    });
+  });
+  describe('updateQuestBadgeNum()', () => {
+    const { startTs, endTs, supply, title, uri } = questDataNew;
+    let updateQuestBadgeSig = ''
+    let creator;
+    let signer;
+    let questBadgeNum = 0;
+    before(async () => {
+      signer = owner;
+      creator = accounts[2];
+      claimer = accounts[3];
+      questBadgeNum = 100;
+      createQuestSig = await genCreateSig(questData, creator, signer);
+      updateQuestBadgeSig = await genUpdateQuestBadgeNumSig(InitStartTokenId, questBadgeNum, creator, signer);
+      // questMinterContract.connect(accounts[3]).updateQuestBadgeNum(InitStartTokenId, questDataNew, modifyQuestSig);
+
+      // QuestBadgeNum = badge.questBadgeNum(InitStartTokenId);
+
+    });
+    it('should revert "Invalid signer"', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+      await expect(
+        questMinterContract.connect(creator).updateQuestBadgeNum(InitStartTokenId, questBadgeNum, INVALID_SIG)
+      ).to.revertedWithCustomError(questMinterContract, 'InvalidSigner');
+    });
+
+    it('should revert "NonexistentToken""', async () => {
+      await expect(
+        questMinterContract.connect(creator).updateQuestBadgeNum(InitStartTokenId, questBadgeNum, updateQuestBadgeSig)
+      ).to.revertedWithCustomError(questContract, 'NonexistentToken');
+    });
+
+    it('should updateQuestBadgeNum ', async () => {
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+      await questMinterContract.connect(creator).updateQuestBadgeNum(InitStartTokenId, questBadgeNum, updateQuestBadgeSig);
+      let questBadgeNumAfter = await questContract.questBadgeNum(InitStartTokenId)
+      expect(questBadgeNumAfter).to.equal(questBadgeNum);
     });
   });
 });

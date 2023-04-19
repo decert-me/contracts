@@ -236,4 +236,25 @@ describe("Quest", async () => {
       expect(await questContract.meta()).to.equal(questContract.address);
     });
   });
+  describe('updateQuestBadgeNum()', () => {
+    let questBadgeNum = 1000;
+
+    it('should revert "NonexistentToken""', async () => {
+      await expect(
+        questContract.connect(minter).updateQuestBadgeNum(100, questBadgeNum)
+      ).to.revertedWithCustomError(questContract, 'NonexistentToken');
+    });
+
+    it('should updateQuestBadgeNum ', async () => {
+      let { id, to, questData, data } = mintParams;
+      const receiver = accounts[3];
+      const newReceiver = provider.createEmptyWallet();
+
+      await questContract.connect(minter).mint(receiver.address, id, questData, data);
+
+      await questContract.connect(minter).updateQuestBadgeNum(id, questBadgeNum);
+      let questBadgeNumAfter = await questContract.questBadgeNum(id)
+      expect(questBadgeNumAfter).to.equal(questBadgeNum);
+    });
+  });
 });

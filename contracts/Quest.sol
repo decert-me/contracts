@@ -29,6 +29,12 @@ contract Quest is IQuest, SBTBase, Ownable {
         uint256 indexed tokenId,
         QuestData questData
     );
+    event QuestBadgeNumUpdate(uint256 indexed questId, uint256 badgeNum);
+    event QuestModify(
+        address indexed creator,
+        uint256 indexed tokenId,
+        QuestData questData
+    );
 
     constructor() SBTBase("Decert Quest", "DQuest") {}
 
@@ -36,9 +42,8 @@ contract Quest is IQuest, SBTBase, Ownable {
         address minter,
         bool enabled
     ) external override onlyOwner {
-        if (minter == address(0)) {
-            revert InvalidMinter();
-        }
+        if (minter == address(0)) revert InvalidMinter();
+
         minters[minter] = enabled;
         emit SetMinter(minter, enabled);
     }
@@ -67,33 +72,33 @@ contract Quest is IQuest, SBTBase, Ownable {
         uint256 tokenId,
         QuestData calldata questData
     ) external onlyMinter {
+        if (!_exists(tokenId)) revert NonexistentToken();
+
         quests[tokenId] = questData;
+        emit QuestModify(msg.sender, tokenId, questData);
     }
 
     function getQuest(
         uint256 tokenId
     ) external view returns (QuestData memory questData) {
-        return quests[tokenId];
-    }
-
-    function updateURI(
-        uint256 tokenId,
-        string calldata uri
-    ) external onlyMinter {
         if (!_exists(tokenId)) revert NonexistentToken();
 
-        QuestData storage questData = quests[tokenId];
-        questData.uri = uri;
+        return quests[tokenId];
     }
 
     function updateQuestBadgeNum(
         uint256 questId,
         uint256 badgeNum
     ) external onlyMinter {
+        if (!_exists(questId)) revert NonexistentToken();
+
         questBadgeNum[questId] = badgeNum;
+        emit QuestBadgeNumUpdate(questId, badgeNum);
     }
 
     function getQuestBadgeNum(uint256 questId) external view returns (uint256) {
+        if (!_exists(questId)) revert NonexistentToken();
+
         return questBadgeNum[questId];
     }
 
