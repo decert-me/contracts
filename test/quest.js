@@ -47,17 +47,16 @@ describe("Quest", async () => {
   let accounts, owner;
   const name = 'Decert Quest';
   const symbol = 'DQuest';
-  const uri = '';
   let snapshotId;
   let minter;
 
   before(async () => {
     const Badge = await ethers.getContractFactory('Badge');
-    badgeContract = await Badge.deploy(uri);
+    badgeContract = await Badge.deploy();
     await badgeContract.deployed();
 
     const Quest = await ethers.getContractFactory("Quest");
-    questContract = await Quest.deploy(badgeContract.address);
+    questContract = await Quest.deploy();
     await questContract.deployed();
 
     const QuestMetadata = await ethers.getContractFactory("QuestMetadata");
@@ -117,8 +116,6 @@ describe("Quest", async () => {
 
   describe('mint()', async () => {
     beforeEach(async () => {
-      let { creator, id, initialSupply, uri, data } = createParams;
-      await badgeContract.connect(minter).create(creator, id, initialSupply, uri, data)
     });
 
     it("not minter should revert", async () => {
@@ -147,7 +144,7 @@ describe("Quest", async () => {
       await expect(
         questContract.connect(minter).mint(to, id, questData, data)
       ).to.emit(questContract, 'QuestCreated')
-        .withArgs(to, id, [startTs, endTs, supply, title, uri]);
+        .withArgs(to, id, [startTs, endTs, title, uri]);
 
     });
 
@@ -160,47 +157,22 @@ describe("Quest", async () => {
         questContract.connect(minter).mint(to, id, questData, data)
       ).to.be.revertedWith(REVERT_MSGS['AlreadyMinted']);
     });
-
-    it("mint none existent token should revert", async () => {
-      let { to, questData, data } = mintParams;
-      await expect(
-        questContract.connect(minter).mint(to, 1, questData, data)
-      ).to.be.revertedWithCustomError(questContract, 'NonexistentToken');
-    });
   })
 
   describe('modifyQuest()', async () => {
-    beforeEach(async () => {
-      let { creator, id, initialSupply, uri, data } = createParams;
-      await badgeContract.connect(minter).create(creator, id, initialSupply, uri, data)
-    });
-
     it("not minter should revert", async () => {
       let { to, id, questData, data } = mintParams;
 
       await expect(questContract.connect(accounts[2]).modifyQuest(id, questData)).to.be.revertedWithCustomError(questContract, 'OnlyMinter');
     });
-
-    it("modify claimed should revert", async () => {
-      let { to, id, questData, data } = mintParams;
-      await badgeContract.connect(minter).mint(to, id, 1, data);
-
-      await expect(questContract.connect(minter).modifyQuest(id, questData)).to.be.revertedWithCustomError(questContract, 'ClaimedCannotModify');
-    });
   });
 
   describe('getQuest()', async () => {
-    beforeEach(async () => {
-      let { creator, id, initialSupply, uri, data } = createParams;
-      await badgeContract.connect(minter).create(creator, id, initialSupply, uri, data);
-    });
-
     it("None existent quest", async () => {
       const questData = await questContract.quests(1);
-      const { startTs, endTs, supply, title, uri } = questData;
+      const { startTs, endTs, title, uri } = questData;
       expect(startTs).to.equal(questData.startTs);
       expect(endTs).to.equal(questData.endTs);
-      expect(supply).to.equal(questData.supply);
       expect(title).to.equal('');
       expect(uri).to.equal('');
     });
@@ -210,21 +182,15 @@ describe("Quest", async () => {
       await questContract.connect(minter).mint(to, id, questData, data);
 
       const questData2 = await questContract.quests(id);
-      const { startTs, endTs, supply, title, uri } = questData2;
+      const { startTs, endTs, title, uri } = questData2;
       expect(startTs).to.equal(questData.startTs);
       expect(endTs).to.equal(questData.endTs);
-      expect(supply).to.equal(questData.supply);
       expect(title).to.equal(questData.title);
       expect(uri).to.equal(questData.uri);
     });
   })
 
   describe('tokenURI()', async () => {
-    beforeEach(async () => {
-      let { creator, id, initialSupply, uri, data } = createParams;
-      await badgeContract.connect(minter).create(creator, id, initialSupply, uri, data)
-    });
-
     it("should revert NonexistentTokenUri", async () => {
       await expect(questContract.tokenURI(1)).to.be.revertedWithCustomError(
         questMetadataContract,
@@ -242,11 +208,6 @@ describe("Quest", async () => {
   })
 
   describe('SBT', async () => {
-    beforeEach(async () => {
-      let { creator, id, initialSupply, uri, data } = createParams;
-      await badgeContract.connect(minter).create(creator, id, initialSupply, uri, data)
-    });
-
     it("non-transferable", async () => {
       let { id, to, questData, data } = mintParams;
       const receiver = accounts[3];
