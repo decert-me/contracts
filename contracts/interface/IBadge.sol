@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 interface IBadge {
     struct QuestData {
+        address creator;
         uint32 startTs;
         uint32 endTs;
         string title;

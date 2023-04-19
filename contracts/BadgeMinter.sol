@@ -18,13 +18,13 @@ contract BadgeMinter is Ownable {
     address public signer;
 
     event SignerChanged(address signer);
-    event Donation(address from, address to, uint256 amount);
     event Airdroped(
         uint256 indexed questId,
         address indexed to,
         uint256 score,
         string uri
     );
+    event Donation(address from, address to, uint256 amount);
 
     constructor(address badge_) {
         badge = IBadge(badge_);
@@ -43,7 +43,8 @@ contract BadgeMinter is Ownable {
         uint256 score,
         string memory uri,
         bytes calldata signature
-    ) external {
+    ) external payable {
+        address creator = questData.creator;
         uint32 startTs = questData.startTs;
         uint32 endTs = questData.endTs;
         string memory title = questData.title;
@@ -51,12 +52,12 @@ contract BadgeMinter is Ownable {
 
         bytes32 hash = keccak256(
             abi.encodePacked(
+                creator,
                 questId,
                 startTs,
                 endTs,
                 title,
                 questUri,
-                to,
                 score,
                 uri,
                 address(this),
@@ -71,6 +72,11 @@ contract BadgeMinter is Ownable {
         quest.title = title;
         quest.uri = questUri;
         badge.claimWithCreate(questData, questId, to, score, uri);
+
+        if (msg.value > 0) {
+            payable(creator).transfer(msg.value);
+            emit Donation(msg.sender, creator, msg.value);
+        }
     }
 
     function claimWithScore(
@@ -79,7 +85,7 @@ contract BadgeMinter is Ownable {
         uint256 score,
         string memory uri,
         bytes calldata signature
-    ) external {
+    ) external payable {
         bytes32 hash = keccak256(
             abi.encodePacked(
                 to,
@@ -93,6 +99,13 @@ contract BadgeMinter is Ownable {
         if (!_verify(hash, signature)) revert InvalidSigner();
 
         badge.claimWithScore(to, questId, score, uri);
+        IBadge.QuestData memory quest;
+        quest = badge.getQuest(questId);
+
+        if (msg.value > 0) {
+            payable(quest.creator).transfer(msg.value);
+            emit Donation(msg.sender, quest.creator, msg.value);
+        }
     }
 
     function updateQuest(

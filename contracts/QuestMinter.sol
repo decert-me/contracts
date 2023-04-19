@@ -17,9 +17,7 @@ contract QuestMinter is Ownable {
     uint256 public startTokenId;
     address public signer;
 
-    event Claimed(uint256 indexed questId, address indexed sender);
     event SignerChanged(address signer);
-    event Donation(address from, address to, uint256 amount);
 
     constructor(address quest_) {
         quest = IQuest(quest_);
@@ -61,6 +59,38 @@ contract QuestMinter is Ownable {
         quest.mint(msg.sender, startTokenId, questData, "0x");
 
         startTokenId += 1;
+    }
+
+    function modifyQuest(
+        uint256 tokenId,
+        IQuest.QuestData calldata questData,
+        bytes calldata signature
+    ) external {
+        if (quest.ownerOf(tokenId) != msg.sender) {
+            revert NotCreator();
+        }
+
+        uint32 startTs = questData.startTs;
+        uint32 endTs = questData.endTs;
+        string memory title = questData.title;
+        string memory uri = questData.uri;
+
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                tokenId,
+                startTs,
+                endTs,
+                title,
+                uri,
+                address(this),
+                address(msg.sender)
+            )
+        );
+        if (!_verify(hash, signature)) {
+            revert InvalidSigner();
+        }
+
+        quest.modifyQuest(tokenId, questData);
     }
 
     function updateQuestBadgeNum(

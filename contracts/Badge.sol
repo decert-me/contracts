@@ -31,7 +31,9 @@ contract Badge is IBadge, SBTBase, Ownable {
     event CreatedQuest(uint256 indexed questId, QuestData questData);
     event UpdateScore(uint256 indexed tokenId, uint256 score);
     event UpdateQuest(uint256 indexed questId, QuestData questData);
-
+    event Claimed(uint256 indexed questId, address indexed sender);
+    event Donation(address from, address to, uint256 amount);
+    
     constructor() SBTBase("Decert Badge", "Decert") {}
 
     function setMinter(
@@ -69,6 +71,7 @@ contract Badge is IBadge, SBTBase, Ownable {
         badgeToQuest[tokenId] = questId;
         _questBadgeNum[questId]++;
         addrToQuestToBadge[to][questId] = tokenId;
+        emit Claimed(questId, to);
     }
 
     function claimWithScore(
