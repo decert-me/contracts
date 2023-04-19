@@ -6,14 +6,10 @@ interface IBadge {
         uint32 startTs;
         uint32 endTs;
         string title;
+        string uri;
     }
 
-    function claim(
-        address to,
-        uint256 questId,
-        string memory uri
-    ) external;
-
+    function setMinter(address minter, bool enabled) external;
 
     function claimWithScore(
         address to,
@@ -22,13 +18,27 @@ interface IBadge {
         string memory uri
     ) external;
 
-    function updateScore(
-        address to,
+    function claimWithCreate(
+        QuestData calldata questData,
         uint256 questId,
-        uint256 score
+        address to,
+        uint256 score,
+        string memory uri
     ) external;
 
+    function updateQuest(
+        uint256 questId,
+        uint32 startTs,
+        uint32 endTs,
+        string memory title,
+        string memory questUri
+    ) external;
+
+    function updateScore(address to, uint256 questId, uint256 score) external;
+
     function getQuestBadgeNum(uint256 questId) external view returns (uint256);
+
+    function getQuest(uint256 questId) external view returns (QuestData memory);
 
     function totalSupply() external view returns (uint256);
 }

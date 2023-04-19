@@ -6,7 +6,6 @@ interface IQuest is IERC721 {
     struct QuestData {
         uint32 startTs;
         uint32 endTs;
-        uint192 supply;
         string title;
         string uri;
     }
@@ -20,16 +19,20 @@ interface IQuest is IERC721 {
         bytes memory data
     ) external;
 
-    function getQuest(uint256 tokenId)
-        external
-        view
-        returns (QuestData memory questData);
+    function getQuest(
+        uint256 tokenId
+    ) external view returns (QuestData memory questData);
 
     function updateURI(uint256 tokenId, string calldata uri) external;
 
-    function modifyQuest(uint256 tokenId, QuestData calldata questData) external;
+    function modifyQuest(
+        uint256 tokenId,
+        QuestData calldata questData
+    ) external;
+
+    function updateQuestBadgeNum(uint256 questId, uint256 badgeNum) external;
+
+    function getQuestBadgeNum(uint256 questId) external view returns (uint256);
 
     function exists(uint256 tokenId) external view returns (bool);
-
-    function numOfBadge(uint256 tokenId) external view returns (uint256);
 }

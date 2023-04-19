@@ -16,14 +16,13 @@ contract Quest is IQuest, SBTBase, Ownable {
     error ClaimedCannotModify();
     error ZeroAddress();
 
-    IBadge public badge;
-
     uint256 public totalSupply;
     address public meta;
 
     mapping(address => bool) public minters;
     mapping(uint256 => QuestData) public quests;
-
+    mapping(uint256 => uint256) public questBadgeNum;
+    
     event SetMinter(address minter, bool enabled);
     event QuestCreated(
         address indexed creator,
@@ -31,9 +30,7 @@ contract Quest is IQuest, SBTBase, Ownable {
         QuestData questData
     );
 
-    constructor(address badge_) SBTBase("Decert Quest", "DQuest") {
-        badge = IBadge(badge_);
-    }
+    constructor() SBTBase("Decert Quest", "DQuest") {}
 
     function setMinter(
         address minter,
@@ -70,11 +67,6 @@ contract Quest is IQuest, SBTBase, Ownable {
         uint256 tokenId,
         QuestData calldata questData
     ) external onlyMinter {
-        // 已有领取不可更改
-        if (this.numOfBadge(tokenId) != 0) {
-            revert ClaimedCannotModify();
-        }
-
         quests[tokenId] = questData;
     }
 
@@ -96,8 +88,21 @@ contract Quest is IQuest, SBTBase, Ownable {
         questData.uri = uri;
     }
 
+    function updateQuestBadgeNum(
+        uint256 questId,
+        uint256 badgeNum
+    ) external onlyMinter {
+        questBadgeNum[questId] = badgeNum;
+    }
+
+    function getQuestBadgeNum(
+        uint256 questId
+    ) external view returns (uint256)  {
+        return questBadgeNum[questId];
+    }
+
     function setMetaContract(address _meta) external onlyOwner {
-        if (_meta == address(0)){
+        if (_meta == address(0)) {
             revert ZeroAddress();
         }
         meta = _meta;
@@ -109,11 +114,7 @@ contract Quest is IQuest, SBTBase, Ownable {
         return IMetadata(meta).tokenURI(tokenId);
     }
 
-    function exists(uint256 tokenId) external view returns (bool){
+    function exists(uint256 tokenId) external view returns (bool) {
         return _exists(tokenId);
-    }
-
-    function numOfBadge(uint tokenId) external view returns (uint256){
-        return badge.getQuestBadgeNum(tokenId);
     }
 }

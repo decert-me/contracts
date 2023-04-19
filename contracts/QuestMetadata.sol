@@ -4,14 +4,17 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "base64-sol/base64.sol";
 import "./interface/IQuest.sol";
+import "./interface/IBadge.sol";
 import "./interface/IMetadata.sol";
 
 contract QuestMetadata is IMetadata {
     error NonexistentTokenUri();
 
     IQuest public quest;
+    IBadge public badge;
 
-    constructor(address quests_) {
+    constructor(address badge_, address quests_) {
+        badge = IBadge(badge_);
         quest = IQuest(quests_);
     }
 
@@ -73,8 +76,13 @@ contract QuestMetadata is IMetadata {
         IQuest.QuestData memory questData = quest.getQuest(tokenId);
         string memory title = questData.title;
         string memory uri = questData.uri;
-        uint256 numOfBadge = quest.numOfBadge(tokenId);
+        uint256 numOfBadge;
 
+        if (quest.getQuestBadgeNum(tokenId) != 0) {
+            numOfBadge = quest.getQuestBadgeNum(tokenId);
+        }else{
+            numOfBadge = badge.getQuestBadgeNum(tokenId);
+        }
         return
             string(
                 abi.encodePacked(
