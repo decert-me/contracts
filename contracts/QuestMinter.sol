@@ -66,9 +66,7 @@ contract QuestMinter is Ownable {
         IQuest.QuestData calldata questData,
         bytes calldata signature
     ) external {
-        if (quest.ownerOf(tokenId) != msg.sender) {
-            revert NotCreator();
-        }
+        if (quest.ownerOf(tokenId) != msg.sender) revert NotCreator();
 
         uint32 startTs = questData.startTs;
         uint32 endTs = questData.endTs;
@@ -86,9 +84,7 @@ contract QuestMinter is Ownable {
                 address(msg.sender)
             )
         );
-        if (!_verify(hash, signature)) {
-            revert InvalidSigner();
-        }
+        if (!_verify(hash, signature)) revert InvalidSigner();
 
         quest.modifyQuest(tokenId, questData);
     }

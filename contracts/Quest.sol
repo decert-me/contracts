@@ -22,7 +22,7 @@ contract Quest is IQuest, SBTBase, Ownable {
     mapping(address => bool) public minters;
     mapping(uint256 => QuestData) public quests;
     mapping(uint256 => uint256) public questBadgeNum;
-    
+
     event SetMinter(address minter, bool enabled);
     event QuestCreated(
         address indexed creator,
@@ -80,9 +80,7 @@ contract Quest is IQuest, SBTBase, Ownable {
         uint256 tokenId,
         string calldata uri
     ) external onlyMinter {
-        if (!_exists(tokenId)) {
-            revert NonexistentToken();
-        }
+        if (!_exists(tokenId)) revert NonexistentToken();
 
         QuestData storage questData = quests[tokenId];
         questData.uri = uri;
@@ -95,16 +93,13 @@ contract Quest is IQuest, SBTBase, Ownable {
         questBadgeNum[questId] = badgeNum;
     }
 
-    function getQuestBadgeNum(
-        uint256 questId
-    ) external view returns (uint256)  {
+    function getQuestBadgeNum(uint256 questId) external view returns (uint256) {
         return questBadgeNum[questId];
     }
 
     function setMetaContract(address _meta) external onlyOwner {
-        if (_meta == address(0)) {
-            revert ZeroAddress();
-        }
+        if (_meta == address(0)) revert ZeroAddress();
+
         meta = _meta;
     }
 

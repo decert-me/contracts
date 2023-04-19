@@ -33,16 +33,15 @@ contract Badge is IBadge, SBTBase, Ownable {
     event UpdateQuest(uint256 indexed questId, QuestData questData);
     event Claimed(uint256 indexed questId, address indexed sender);
     event Donation(address from, address to, uint256 amount);
-    
+
     constructor() SBTBase("Decert Badge", "Decert") {}
 
     function setMinter(
         address minter,
         bool enabled
     ) external override onlyOwner {
-        if (minter == address(0)) {
-            revert InvalidMinter();
-        }
+        if (minter == address(0)) revert InvalidMinter();
+
         minters[minter] = enabled;
         emit SetMinter(minter, enabled);
     }
@@ -55,9 +54,8 @@ contract Badge is IBadge, SBTBase, Ownable {
     }
 
     function claim(address to, uint256 questId, string memory uri) internal {
-        if (addrToQuestToBadge[to][questId] != 0) {
-            revert AlreadyHoldsBadge();
-        }
+        if (addrToQuestToBadge[to][questId] != 0) revert AlreadyHoldsBadge();
+
         QuestData memory questData = quests[questId];
         if (
             block.timestamp < questData.startTs ||

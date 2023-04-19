@@ -21,9 +21,7 @@ contract QuestMetadata is IMetadata {
     function tokenURI(
         uint256 tokenId
     ) external view override returns (string memory) {
-        if (!quest.exists(tokenId)) {
-            revert NonexistentTokenUri();
-        }
+        if (!quest.exists(tokenId)) revert NonexistentTokenUri();
 
         return generateTokenUri(tokenId);
     }
@@ -80,7 +78,7 @@ contract QuestMetadata is IMetadata {
 
         if (quest.getQuestBadgeNum(tokenId) != 0) {
             numOfBadge = quest.getQuestBadgeNum(tokenId);
-        }else{
+        } else {
             numOfBadge = badge.getQuestBadgeNum(tokenId);
         }
         return
