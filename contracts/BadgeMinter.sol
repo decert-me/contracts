@@ -19,7 +19,12 @@ contract BadgeMinter is Ownable {
 
     event SignerChanged(address signer);
     event Donation(address from, address to, uint256 amount);
-    event Airdroped(uint256 indexed questId, address indexed to);
+    event Airdroped(
+        uint256 indexed questId,
+        address indexed to,
+        uint256 score,
+        string uri
+    );
 
     constructor(address badge_) {
         badge = IBadge(badge_);
@@ -174,7 +179,7 @@ contract BadgeMinter is Ownable {
                 block.timestamp > questData.endTs
             ) continue;
             badge.claimWithScore(receiver, questId, score, uri);
-            emit Airdroped(questId, receiver);
+            emit Airdroped(questId, receiver, score, uri);
         }
     }
 

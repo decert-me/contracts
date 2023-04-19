@@ -28,6 +28,9 @@ contract Badge is IBadge, SBTBase, Ownable {
     uint256 _totalSupply = 0;
 
     event SetMinter(address minter, bool enabled);
+    event CreatedQuest(uint256 indexed questId, QuestData questData);
+    event UpdateScore(uint256 indexed tokenId, uint256 score);
+    event UpdateQuest(uint256 indexed questId, QuestData questData);
 
     constructor() SBTBase("Decert Badge", "Decert") {}
 
@@ -77,6 +80,8 @@ contract Badge is IBadge, SBTBase, Ownable {
         if (_questBadgeNum[questId] == 0) revert NonexistentQuest();
         claim(to, questId, uri);
         scores[_totalSupply] = score;
+
+        emit UpdateScore(_totalSupply, score);
     }
 
     function claimWithCreate(
@@ -107,10 +112,13 @@ contract Badge is IBadge, SBTBase, Ownable {
         quest.endTs = endTs;
         quest.title = title;
         quest.uri = questUri;
+
+        emit UpdateQuest(questId, quest);
     }
 
     function _create(uint256 questId, QuestData memory quest) internal {
         quests[questId] = quest;
+        emit CreatedQuest(questId, quest);
     }
 
     function updateScore(
@@ -123,6 +131,8 @@ contract Badge is IBadge, SBTBase, Ownable {
         if (badgeId == 0) revert NotClaimedYet();
 
         scores[badgeId] = score;
+
+        emit UpdateScore(badgeId, score);
     }
 
     function getQuest(
