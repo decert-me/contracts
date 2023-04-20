@@ -3,17 +3,17 @@ const { writeAddr } = require('./recoder.js');
 
 async function main() {
     let [owner] = await ethers.getSigners();
-    let contractName = 'QuestMinter';
+    let contractName = 'BadgeMinter';
     const contractFactory = await ethers.getContractFactory(contractName);
 
-    const QuestAddr = (require(`../deployments/${network.name}/Quest.json`)).address;
+    const BadgeAddr = (require(`../deployments/${network.name}/Badge.json`)).address;
 
-    if (!QuestAddr) {
-        console.error('plaease deploy Quest contract first');
+    if (!BadgeAddr) {
+        console.error('plaease deploy Badge contract first');
         return;
     }
 
-    const contract = await contractFactory.deploy(QuestAddr);
+    const contract = await contractFactory.deploy(BadgeAddr);
     await contract.deployed();
 
     console.log(`[${contractName}] contract deployed to:`, contract.address);

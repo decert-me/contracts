@@ -6,14 +6,7 @@ async function main() {
   let [owner] = await ethers.getSigners();
   let contractName = 'Quest';
   const contractFactory = await ethers.getContractFactory(contractName);
-
-  const BadgeAddr = (require(`../deployments/${network.name}/Badge.json`)).address;
-  if(!BadgeAddr) {
-    console.error('plaease deploy Badge contract first');
-    return;
-  }
-
-  const contract = await contractFactory.deploy(BadgeAddr);
+  const contract = await contractFactory.deploy();
   await contract.deployed();
 
   console.log(`[${contractName}] contract deployed to:`, contract.address);
