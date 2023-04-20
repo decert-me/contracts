@@ -8,6 +8,7 @@ const provider = new MockProvider();
 const REVERT_MSGS = {
   'AlreadyMinted': 'ERC721: token already minted',
   'SBTNonTransferable': 'SBT:non-transferable',
+  'SBTNonApprovable': 'SBT:non-approvable',
 }
 
 async function revertBlock(snapshotId) {
@@ -208,7 +209,7 @@ describe("Quest", async () => {
   })
 
   describe('SBT', async () => {
-    it("non-transferable", async () => {
+    it("transferFrom non-transferable", async () => {
       let { id, to, questData, data } = mintParams;
       const receiver = accounts[3];
       const newReceiver = provider.createEmptyWallet();
@@ -218,6 +219,29 @@ describe("Quest", async () => {
       await expect(
         questContract.connect(receiver).transferFrom(receiver.address, newReceiver.address, id)
       ).to.be.revertedWith(REVERT_MSGS['SBTNonTransferable']);
+    });
+
+    it("non-approvable", async () => {
+      let { id, to, questData, data } = mintParams;
+      const receiver = accounts[3];
+      const newReceiver = provider.createEmptyWallet();
+
+      await questContract.connect(minter).mint(receiver.address, id, questData, data);
+
+      await expect(
+        questContract.connect(receiver).approve(receiver.address, id)
+      ).to.be.revertedWith(REVERT_MSGS['SBTNonApprovable']);
+    });
+
+    it("get approved return zero", async () => {
+      let { id, to, questData, data } = mintParams;
+      const receiver = accounts[3];
+      const newReceiver = provider.createEmptyWallet();
+
+      await questContract.connect(minter).mint(receiver.address, id, questData, data);
+
+      let address = await questContract.connect(receiver).getApproved(id);
+      expect(address).to.equal('0x0000000000000000000000000000000000000000');
     });
   })
 
