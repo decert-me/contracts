@@ -73,12 +73,14 @@ contract BadgeMinter is Ownable {
         quest.uri = questUri;
         badge.claimWithCreate(questData, questId, to, score, uri);
 
+        // TOOD：下面有重复的代码，可以考虑做成独立函数
         if (msg.value > 0) {
             payable(creator).transfer(msg.value);
             emit Donation(msg.sender, creator, msg.value);
         }
     }
 
+    // TODO： score 可以放到uri对应数据结构中
     function claimWithScore(
         address to,
         uint256 questId,
@@ -100,7 +102,7 @@ contract BadgeMinter is Ownable {
 
         badge.claimWithScore(to, questId, score, uri);
         IBadge.QuestData memory quest;
-        quest = badge.getQuest(questId);
+        quest = badge.getQuest(questId);// TODO: not used if msg.value = 0
 
         if (msg.value > 0) {
             payable(quest.creator).transfer(msg.value);

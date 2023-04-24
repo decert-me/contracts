@@ -117,6 +117,7 @@ contract Badge is IBadge, SBTBase, Ownable {
         emit UpdateQuest(questId, quest);
     }
 
+    // TODO: 这里是保存questdata，用_create作为函数名不恰当
     function _create(uint256 questId, QuestData memory quest) internal {
         quests[questId] = quest;
         emit CreatedQuest(questId, quest);

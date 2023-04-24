@@ -117,4 +117,6 @@ contract Quest is IQuest, SBTBase, Ownable {
     function exists(uint256 tokenId) external view returns (bool) {
         return _exists(tokenId);
     }
+
+    // TODO: 添加一个函数，直接捐赠给quest creator
 }
