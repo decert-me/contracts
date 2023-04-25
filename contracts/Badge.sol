@@ -19,7 +19,6 @@ contract Badge is IBadge, SBTBase, Ownable {
     using ECDSA for bytes32;
 
     mapping(address => bool) public minters;
-    mapping(uint256 => uint256) public scores;
     mapping(uint256 => uint256) public badgeToQuest;
     mapping(uint256 => uint256) _questBadgeNum;
     mapping(address => mapping(uint256 => uint256)) addrToQuestToBadge;
@@ -28,11 +27,11 @@ contract Badge is IBadge, SBTBase, Ownable {
     uint256 _totalSupply = 0;
 
     event SetMinter(address minter, bool enabled);
-    event CreatedQuest(uint256 indexed questId, QuestData questData);
-    event UpdateScore(uint256 indexed tokenId, uint256 score);
+    event InitQuest(uint256 indexed questId, QuestData questData);
     event UpdateQuest(uint256 indexed questId, QuestData questData);
     event Claimed(uint256 indexed questId, address indexed sender);
     event Donation(address from, address to, uint256 amount);
+    event UpdateURI(uint indexed tokenId, string uri);
 
     constructor() SBTBase("Decert Badge", "Decert") {}
 
@@ -53,7 +52,7 @@ contract Badge is IBadge, SBTBase, Ownable {
         _;
     }
 
-    function claim(address to, uint256 questId, string memory uri) internal {
+    function _claim(address to, uint256 questId, string memory uri) internal {
         if (addrToQuestToBadge[to][questId] != 0) revert AlreadyHoldsBadge();
 
         QuestData memory questData = quests[questId];
@@ -72,31 +71,29 @@ contract Badge is IBadge, SBTBase, Ownable {
         emit Claimed(questId, to);
     }
 
-    function claimWithScore(
+    function claim(
         address to,
         uint256 questId,
-        uint256 score,
         string memory uri
     ) external onlyMinter {
-        if (_questBadgeNum[questId] == 0) revert NonexistentQuest();
-        claim(to, questId, uri);
-        scores[_totalSupply] = score;
-
-        emit UpdateScore(_totalSupply, score);
+        _claim(to, questId, uri);
     }
 
-    function claimWithCreate(
+    function claimWithInit(
         QuestData calldata questData,
         uint256 questId,
         address to,
-        uint256 score,
         string memory uri
     ) external onlyMinter {
         if (_questBadgeNum[questId] != 0) revert QuestIdAlreadyExists();
 
-        _create(questId, questData);
-        claim(to, questId, uri);
-        scores[_totalSupply] = score;
+        _initQuest(questId, questData);
+        _claim(to, questId, uri);
+    }
+
+    function updateURI(uint tokenId, string memory uri) external onlyMinter {
+        _setTokenURI(tokenId, uri);
+        emit UpdateURI(tokenId, uri);
     }
 
     function updateQuest(
@@ -117,24 +114,9 @@ contract Badge is IBadge, SBTBase, Ownable {
         emit UpdateQuest(questId, quest);
     }
 
-    // TODO: 这里是保存questdata，用_create作为函数名不恰当
-    function _create(uint256 questId, QuestData memory quest) internal {
+    function _initQuest(uint256 questId, QuestData memory quest) internal {
         quests[questId] = quest;
-        emit CreatedQuest(questId, quest);
-    }
-
-    function updateScore(
-        address to,
-        uint256 questId,
-        uint256 score
-    ) external onlyMinter {
-        uint badgeId = addrToQuestToBadge[to][questId];
-
-        if (badgeId == 0) revert NotClaimedYet();
-
-        scores[badgeId] = score;
-
-        emit UpdateScore(badgeId, score);
+        emit InitQuest(questId, quest);
     }
 
     function getQuest(
@@ -160,13 +142,5 @@ contract Badge is IBadge, SBTBase, Ownable {
             "ERC721URIStorage: URI set of nonexistent token"
         );
         _tokenURIs[tokenId] = _tokenURI;
-    }
-
-    function tokenURI(
-        uint256 tokenId
-    ) public view virtual override returns (string memory) {
-        if (!_exists(tokenId)) revert NonexistentToken();
-
-        return _tokenURIs[tokenId];
     }
 }

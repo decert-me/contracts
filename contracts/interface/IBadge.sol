@@ -1,7 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-interface IBadge {
+interface IBadge is IERC721 {
     struct QuestData {
         address creator;
         uint32 startTs;
@@ -12,18 +13,16 @@ interface IBadge {
 
     function setMinter(address minter, bool enabled) external;
 
-    function claimWithScore(
+    function claim(
         address to,
         uint256 questId,
-        uint256 score,
         string memory uri
     ) external;
 
-    function claimWithCreate(
-        QuestData calldata questData,
+    function claimWithInit(
+        IBadge.QuestData calldata questData,
         uint256 questId,
         address to,
-        uint256 score,
         string memory uri
     ) external;
 
@@ -35,11 +34,11 @@ interface IBadge {
         string memory questUri
     ) external;
 
-    function updateScore(address to, uint256 questId, uint256 score) external;
-
     function getQuestBadgeNum(uint256 questId) external view returns (uint256);
 
     function getQuest(uint256 questId) external view returns (QuestData memory);
 
     function totalSupply() external view returns (uint256);
+    
+    function updateURI(uint tokenId, string memory uri) external;
 }

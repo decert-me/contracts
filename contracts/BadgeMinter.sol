@@ -18,12 +18,7 @@ contract BadgeMinter is Ownable {
     address public signer;
 
     event SignerChanged(address signer);
-    event Airdroped(
-        uint256 indexed questId,
-        address indexed to,
-        uint256 score,
-        string uri
-    );
+    event Airdroped(uint256 indexed questId, address indexed to, string uri);
     event Donation(address from, address to, uint256 amount);
 
     constructor(address badge_) {
@@ -36,11 +31,10 @@ contract BadgeMinter is Ownable {
         emit SignerChanged(signer_);
     }
 
-    function claimWithCreate(
+    function claimWithInit(
         IBadge.QuestData calldata questData,
         uint256 questId,
         address to,
-        uint256 score,
         string memory uri,
         bytes calldata signature
     ) external payable {
@@ -58,7 +52,7 @@ contract BadgeMinter is Ownable {
                 endTs,
                 title,
                 questUri,
-                score,
+                to,
                 uri,
                 address(this),
                 address(msg.sender)
@@ -71,20 +65,16 @@ contract BadgeMinter is Ownable {
         quest.endTs = endTs;
         quest.title = title;
         quest.uri = questUri;
-        badge.claimWithCreate(questData, questId, to, score, uri);
+        badge.claimWithInit(questData, questId, to, uri);
 
-        // TOOD：下面有重复的代码，可以考虑做成独立函数
         if (msg.value > 0) {
-            payable(creator).transfer(msg.value);
-            emit Donation(msg.sender, creator, msg.value);
+            _donate(creator);
         }
     }
 
-    // TODO： score 可以放到uri对应数据结构中
-    function claimWithScore(
+    function claim(
         address to,
         uint256 questId,
-        uint256 score,
         string memory uri,
         bytes calldata signature
     ) external payable {
@@ -92,7 +82,6 @@ contract BadgeMinter is Ownable {
             abi.encodePacked(
                 to,
                 questId,
-                score,
                 uri,
                 address(this),
                 address(msg.sender)
@@ -100,14 +89,26 @@ contract BadgeMinter is Ownable {
         );
         if (!_verify(hash, signature)) revert InvalidSigner();
 
-        badge.claimWithScore(to, questId, score, uri);
-        IBadge.QuestData memory quest;
-        quest = badge.getQuest(questId);// TODO: not used if msg.value = 0
+        badge.claim(to, questId, uri);
 
         if (msg.value > 0) {
-            payable(quest.creator).transfer(msg.value);
-            emit Donation(msg.sender, quest.creator, msg.value);
+            IBadge.QuestData memory quest = badge.getQuest(questId);
+            _donate(quest.creator);
         }
+    }
+
+    function updateURI(
+        uint tokenId,
+        string memory uri,
+        bytes calldata signature
+    ) external {
+        bytes32 hash = keccak256(
+            abi.encodePacked(tokenId, uri, address(this), address(msg.sender))
+        );
+        if (!_verify(hash, signature)) revert InvalidSigner();
+        if (badge.ownerOf(tokenId) != msg.sender) revert InvalidSigner();
+
+        badge.updateURI(tokenId, uri);
     }
 
     function updateQuest(
@@ -134,31 +135,10 @@ contract BadgeMinter is Ownable {
         badge.updateQuest(questId, startTs, endTs, title, questUri);
     }
 
-    function updateScore(
-        address to,
-        uint256 questId,
-        uint256 score,
-        bytes calldata signature
-    ) external {
-        bytes32 hash = keccak256(
-            abi.encodePacked(
-                to,
-                questId,
-                score,
-                address(this),
-                address(msg.sender)
-            )
-        );
-        if (!_verify(hash, signature)) revert InvalidSigner();
-
-        badge.updateScore(to, questId, score);
-    }
-
     function airdropBadge(
         uint256[] calldata questIds,
         address[] calldata receivers,
         string[] calldata uris,
-        uint256[] calldata scores,
         bytes calldata signature
     ) external {
         bytes32 hash = keccak256(
@@ -166,7 +146,6 @@ contract BadgeMinter is Ownable {
                 "airdropBadge",
                 questIds,
                 receivers,
-                scores,
                 address(this),
                 address(msg.sender)
             )
@@ -174,17 +153,12 @@ contract BadgeMinter is Ownable {
         if (!_verify(hash, signature)) revert InvalidSigner();
 
         uint256 numOfReceivers = receivers.length;
-        if (
-            numOfReceivers == 0 ||
-            numOfReceivers != questIds.length ||
-            numOfReceivers != scores.length
-        ) {
+        if (numOfReceivers == 0 || numOfReceivers != questIds.length) {
             revert InvalidArray();
         }
         for (uint256 i = 0; i < numOfReceivers; i++) {
             address receiver = receivers[i];
             uint questId = questIds[i];
-            uint score = scores[i];
             string memory uri = uris[i];
 
             IBadge.QuestData memory questData;
@@ -193,8 +167,8 @@ contract BadgeMinter is Ownable {
                 block.timestamp < questData.startTs ||
                 block.timestamp > questData.endTs
             ) continue;
-            badge.claimWithScore(receiver, questId, score, uri);
-            emit Airdroped(questId, receiver, score, uri);
+            badge.claim(receiver, questId, uri);
+            emit Airdroped(questId, receiver, uri);
         }
     }
 
@@ -210,5 +184,10 @@ contract BadgeMinter is Ownable {
         bytes calldata signature
     ) internal pure returns (address) {
         return msgHash.toEthSignedMessageHash().recover(signature);
+    }
+
+    function _donate(address to) internal {
+        payable(to).transfer(msg.value);
+        emit Donation(msg.sender, to, msg.value);
     }
 }

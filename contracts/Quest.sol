@@ -35,6 +35,7 @@ contract Quest is IQuest, SBTBase, Ownable {
         uint256 indexed tokenId,
         QuestData questData
     );
+    event Donation(address from, address to, uint256 amount);
 
     constructor() SBTBase("Decert Quest", "DQuest") {}
 
@@ -118,5 +119,10 @@ contract Quest is IQuest, SBTBase, Ownable {
         return _exists(tokenId);
     }
 
-    // TODO: 添加一个函数，直接捐赠给quest creator
+    function donate(uint256 questId) external payable {
+        address creator = ownerOf(questId);
+
+        payable(creator).transfer(msg.value);
+        emit Donation(msg.sender, creator, msg.value);
+    }
 }
