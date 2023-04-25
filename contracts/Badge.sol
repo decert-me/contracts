@@ -62,6 +62,7 @@ contract Badge is IBadge, SBTBase, Ownable {
         ) {
             revert NotInTime();
         }
+
         uint256 tokenId = ++_totalSupply;
         _mint(to, tokenId);
         _setTokenURI(tokenId, uri);
@@ -142,5 +143,13 @@ contract Badge is IBadge, SBTBase, Ownable {
             "ERC721URIStorage: URI set of nonexistent token"
         );
         _tokenURIs[tokenId] = _tokenURI;
+    }
+
+     function tokenURI(
+        uint256 tokenId
+    ) public view virtual override returns (string memory) {
+        if (!_exists(tokenId)) revert NonexistentToken();
+
+        return _tokenURIs[tokenId];
     }
 }
