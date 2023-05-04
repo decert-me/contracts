@@ -167,6 +167,7 @@ contract BadgeMinter is Ownable {
                 block.timestamp < questData.startTs ||
                 block.timestamp > questData.endTs
             ) continue;
+            // TODO: 上面的判断是否重复（badge._mint()有相同逻辑）
             badge.claim(receiver, questId, uri);
             emit Airdroped(questId, receiver, uri);
         }

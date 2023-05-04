@@ -42,7 +42,7 @@ contract Badge is IBadge, SBTBase, Ownable {
         if (minter == address(0)) revert InvalidMinter();
 
         minters[minter] = enabled;
-        emit SetMinter(minter, enabled);
+        emit SetMinter(minter, enabled); //TODO: 事件名建议使用名词/过去式
     }
 
     modifier onlyMinter() {
@@ -94,7 +94,7 @@ contract Badge is IBadge, SBTBase, Ownable {
 
     function updateURI(uint tokenId, string memory uri) external onlyMinter {
         _setTokenURI(tokenId, uri);
-        emit UpdateURI(tokenId, uri);
+        emit UpdateURI(tokenId, uri); //TODO: 事件名建议使用名词/过去式
     }
 
     function updateQuest(
@@ -112,12 +112,12 @@ contract Badge is IBadge, SBTBase, Ownable {
         quest.title = title;
         quest.uri = questUri;
 
-        emit UpdateQuest(questId, quest);
+        emit UpdateQuest(questId, quest); //TODO: 事件名建议使用名词/过去式
     }
 
     function _initQuest(uint256 questId, QuestData memory quest) internal {
         quests[questId] = quest;
-        emit InitQuest(questId, quest);
+        emit InitQuest(questId, quest); //TODO: 事件名建议使用名词/过去式
     }
 
     function getQuest(
@@ -142,6 +142,7 @@ contract Badge is IBadge, SBTBase, Ownable {
             _exists(tokenId),
             "ERC721URIStorage: URI set of nonexistent token"
         );
+        // TODO: 统一改成if...revert...；没有引入ERC721URIStorage，不需要标记它
         _tokenURIs[tokenId] = _tokenURI;
     }
 

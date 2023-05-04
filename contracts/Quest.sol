@@ -46,7 +46,7 @@ contract Quest is IQuest, SBTBase, Ownable {
         if (minter == address(0)) revert InvalidMinter();
 
         minters[minter] = enabled;
-        emit SetMinter(minter, enabled);
+        emit SetMinter(minter, enabled); // TODO: 事件名建议使用名词/过去式
     }
 
     modifier onlyMinter() {
@@ -76,7 +76,7 @@ contract Quest is IQuest, SBTBase, Ownable {
         if (!_exists(tokenId)) revert NonexistentToken();
 
         quests[tokenId] = questData;
-        emit QuestModify(msg.sender, tokenId, questData);
+        emit QuestModify(msg.sender, tokenId, questData);// TODO: 事件名建议使用名词/过去式
     }
 
     function getQuest(
@@ -87,6 +87,7 @@ contract Quest is IQuest, SBTBase, Ownable {
         return quests[tokenId];
     }
 
+    // TODO: 建议缩短函数名为：updateBadgeNum
     function updateQuestBadgeNum(
         uint256 questId,
         uint256 badgeNum
@@ -94,9 +95,10 @@ contract Quest is IQuest, SBTBase, Ownable {
         if (!_exists(questId)) revert NonexistentToken();
 
         questBadgeNum[questId] = badgeNum;
-        emit QuestBadgeNumUpdate(questId, badgeNum);
+        emit QuestBadgeNumUpdate(questId, badgeNum);// TODO: 建议修改事件名：BadgeNumUpdated
     }
 
+    // TODO: 建议缩短函数名为：getBadgeNum
     function getQuestBadgeNum(uint256 questId) external view returns (uint256) {
         if (!_exists(questId)) revert NonexistentToken();
 
