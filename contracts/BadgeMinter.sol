@@ -10,6 +10,8 @@ contract BadgeMinter is Ownable {
     error InvalidSigner();
     error NotCreator();
     error InvalidArray();
+    error NotOwner();
+
     using ECDSA for bytes32;
 
     IBadge public badge;
@@ -106,7 +108,7 @@ contract BadgeMinter is Ownable {
             abi.encodePacked(tokenId, uri, address(this), address(msg.sender))
         );
         if (!_verify(hash, signature)) revert InvalidSigner();
-        if (badge.ownerOf(tokenId) != msg.sender) revert InvalidSigner();
+        if (badge.ownerOf(tokenId) != msg.sender) revert NotOwner();
 
         badge.updateURI(tokenId, uri);
     }
@@ -161,6 +163,13 @@ contract BadgeMinter is Ownable {
             uint questId = questIds[i];
             string memory uri = uris[i];
             
+            IBadge.QuestData memory questData;
+            questData = badge.getQuest(questId);
+            if (
+                block.timestamp < questData.startTs ||
+                block.timestamp > questData.endTs
+            ) continue;
+
             badge.claim(receiver, questId, uri);
             emit Airdroped(questId, receiver, uri);
         }

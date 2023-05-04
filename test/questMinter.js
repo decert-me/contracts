@@ -254,7 +254,7 @@ describe('QuestMinter', async () => {
       ).to.revertedWithCustomError(questMinterContract, 'NotCreator');
     });
   });
-  describe('updateQuestBadgeNum()', () => {
+  describe('updateBadgeNum()', () => {
     const { startTs, endTs, supply, title, uri } = questDataNew;
     let updateQuestBadgeSig = ''
     let creator;
@@ -275,19 +275,19 @@ describe('QuestMinter', async () => {
     it('should revert "Invalid signer"', async () => {
       await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
       await expect(
-        questMinterContract.connect(creator).updateQuestBadgeNum(InitStartTokenId, questBadgeNum, INVALID_SIG)
+        questMinterContract.connect(creator).updateBadgeNum(InitStartTokenId, questBadgeNum, INVALID_SIG)
       ).to.revertedWithCustomError(questMinterContract, 'InvalidSigner');
     });
 
     it('should revert "NonexistentToken""', async () => {
       await expect(
-        questMinterContract.connect(creator).updateQuestBadgeNum(InitStartTokenId, questBadgeNum, updateQuestBadgeSig)
+        questMinterContract.connect(creator).updateBadgeNum(InitStartTokenId, questBadgeNum, updateQuestBadgeSig)
       ).to.revertedWithCustomError(questContract, 'NonexistentToken');
     });
 
-    it('should updateQuestBadgeNum ', async () => {
+    it('should updateBadgeNum success ', async () => {
       await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
-      await questMinterContract.connect(creator).updateQuestBadgeNum(InitStartTokenId, questBadgeNum, updateQuestBadgeSig);
+      await questMinterContract.connect(creator).updateBadgeNum(InitStartTokenId, questBadgeNum, updateQuestBadgeSig);
       let questBadgeNumAfter = await questContract.questBadgeNum(InitStartTokenId)
       expect(questBadgeNumAfter).to.equal(questBadgeNum);
     });

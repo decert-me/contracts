@@ -95,7 +95,7 @@ describe("Badge", async () => {
     });
   });
 
-  describe('claimWithCreate()', async () => {
+  describe('claimWithInit()', async () => {
     let sender;
     let minter;
     before(async () => {
@@ -103,10 +103,10 @@ describe("Badge", async () => {
       minter = accounts[1];
     });
 
-    it("minter claimWithCreate", async () => {
+    it("minter claimWithInit", async () => {
       let { questId, score, uri } = badgeParams;
 
-      await badgeContract.connect(minter).claimWithCreate(createParams, questId, sender.address, score, uri);
+      await badgeContract.connect(minter).claimWithInit(createParams, questId, sender.address, uri);
 
       let totalSupply = await badgeContract.totalSupply();
       expect(totalSupply).to.equal(1);
@@ -122,17 +122,17 @@ describe("Badge", async () => {
       let customQuestId = await badgeContract.badgeToQuest(totalSupply);
       expect(customQuestId).to.equal(questId);
 
-      let badgeScore = await badgeContract.scores(totalSupply);
-      expect(badgeScore).to.equal(score);
+      let tokenURI = await badgeContract.tokenURI(totalSupply);
+      expect(tokenURI).to.equal(uri);
     });
 
-    it("claimWithCreate exists quest should revert", async () => {
+    it("claimWithInit exists quest should revert", async () => {
       let { questId, score, uri } = badgeParams;
 
-      await badgeContract.connect(minter).claimWithCreate(createParams, questId, sender.address, score, uri);
+      await badgeContract.connect(minter).claimWithInit(createParams, questId, sender.address, uri);
       totalSupply = await badgeContract.totalSupply();
       await expect(
-        badgeContract.connect(minter).claimWithCreate(createParams, questId, sender.address, score, uri)
+        badgeContract.connect(minter).claimWithInit(createParams, questId, sender.address, uri)
       ).to.be.revertedWithCustomError(badgeContract, 'QuestIdAlreadyExists');
     });
 
@@ -140,12 +140,12 @@ describe("Badge", async () => {
       let { questId, score, uri } = badgeParams;
 
       await expect(
-        badgeContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri)
+        badgeContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri)
       ).to.revertedWithCustomError(badgeContract, 'OnlyMinter');
     });
   })
 
-  describe("updateScore", () => {
+  describe("updateURI", () => {
     let minter;
     let sender;
     before(async () => {
@@ -153,80 +153,34 @@ describe("Badge", async () => {
       minter = accounts[1];
     });
 
-    it('should revert "NotClaimedYet"', async () => {
+    it('should revert "NonexistentToken"', async () => {
       let { questId, score, uri } = badgeParams;
       await expect(
-        badgeContract.connect(minter).updateScore(sender.address, questId, score)
-      ).to.revertedWithCustomError(badgeContract, 'NotClaimedYet');
+        badgeContract.connect(minter).updateURI(1, uri)
+      ).to.revertedWithCustomError(badgeContract, 'NonexistentToken');
     });
 
     it('should revert "OnlyMinter"', async () => {
       let { questId, score, uri } = badgeParams;
+      await badgeContract.connect(minter).claimWithInit(createParams, questId, sender.address, uri)
+
       await expect(
-        badgeContract.connect(sender).updateScore(sender.address, questId, score)
+        badgeContract.connect(sender).updateURI(1, uri)
       ).to.be.revertedWithCustomError(badgeContract, 'OnlyMinter');
     });
 
     it('should updateScore success', async () => {
       let { questId, score, uri } = badgeParams;
 
-      await badgeContract.connect(minter).claimWithCreate(createParams, questId, sender.address, score, uri)
-
-      score = 100
-      await badgeContract.connect(minter).updateScore(sender.address, questId, score)
+      await badgeContract.connect(minter).claimWithInit(createParams, questId, sender.address, uri)
 
       let totalSupply = await badgeContract.totalSupply();
 
-      let badgeScore = await badgeContract.scores(totalSupply);
-      expect(badgeScore).to.equal(score);
-    });
-  });
+      uri = "ipfs://test-new"
+      await badgeContract.connect(minter).updateURI(1, uri)
 
-  describe("claimWithScore", () => {
-    let minter;
-    let sender;
-    let other;
-    before(async () => {
-      sender = accounts[2];
-      minter = accounts[1];
-      other = accounts[3];
-    });
-
-    it('should revert "NonexistentQuest"', async () => {
-      let { questId, score, uri } = badgeParams;
-      await expect(
-        badgeContract.connect(minter).claimWithScore(sender.address, questId, score, uri)
-      ).to.revertedWithCustomError(badgeContract, 'NonexistentQuest');
-    });
-
-    it('should revert "OnlyMinter"', async () => {
-      let { questId, score, uri } = badgeParams;
-      await expect(
-        badgeContract.connect(sender).claimWithScore(sender.address, questId, score, uri)
-      ).to.revertedWithCustomError(badgeContract, 'OnlyMinter');
-    });
-
-    it('should revert "AlreadyHoldsBadge"', async () => {
-      let { questId, score, uri } = badgeParams;
-      await badgeContract.connect(minter).claimWithCreate(createParams, questId, sender.address, score, uri);
-      await expect(
-        badgeContract.connect(minter).claimWithScore(sender.address, questId, score, uri)
-      ).to.revertedWithCustomError(badgeContract, 'AlreadyHoldsBadge');
-    });
-
-
-    it('should claimWithScore success', async () => {
-      let { questId, score, uri } = badgeParams;
-      await badgeContract.connect(minter).claimWithCreate(createParams, questId, sender.address, score, uri);
-
-      score = 100
-
-      await badgeContract.connect(minter).claimWithScore(other.address, questId, score, uri)
-
-      let totalSupply = await badgeContract.totalSupply();
-
-      let badgeScore = await badgeContract.scores(totalSupply);
-      expect(badgeScore).to.equal(score);
+      let tokenURI = await badgeContract.tokenURI(totalSupply);
+      expect(tokenURI).to.equal(uri);
     });
   });
 
@@ -237,7 +191,7 @@ describe("Badge", async () => {
       sender = accounts[2];
       minter = accounts[1];
       let { questId, score, uri } = badgeParams;
-      await badgeContract.connect(minter).claimWithCreate(createParams, questId, sender.address, score, uri);
+      await badgeContract.connect(minter).claimWithInit(createParams, questId, sender.address, uri);
     });
 
     it("None existent quest", async () => {
@@ -267,17 +221,17 @@ describe("Badge", async () => {
       sender = accounts[2];
       minter = accounts[1];
       let { questId, score, uri } = badgeParams;
-      await badgeContract.connect(minter).claimWithCreate(createParams, questId, sender.address, score, uri);
+      await badgeContract.connect(minter).claimWithInit(createParams, questId, sender.address, uri);
     });
 
     it("None existent quest", async () => {
-      const badgeNum = await badgeContract.getQuestBadgeNum(1);
+      const badgeNum = await badgeContract.getBadgeNum(1);
       expect(badgeNum).to.equal(0);
     });
 
     it("existent quest", async () => {
       let { questId, score, uri } = badgeParams;
-      const badgeNum = await badgeContract.getQuestBadgeNum(questId);
+      const badgeNum = await badgeContract.getBadgeNum(questId);
       expect(badgeNum).to.equal(1);
     });
   })
@@ -297,7 +251,7 @@ describe("Badge", async () => {
 
     it("totalSupply should plus", async () => {
       let { questId, score, uri } = badgeParams;
-      await badgeContract.connect(minter).claimWithCreate(createParams, questId, sender.address, score, uri);
+      await badgeContract.connect(minter).claimWithInit(createParams, questId, sender.address, uri);
       
       const totalSupply = await badgeContract.totalSupply();
       expect(totalSupply).to.equal(1);
@@ -321,7 +275,7 @@ describe("Badge", async () => {
 
     it("tokenURI", async () => {
       let { questId, score, uri } = badgeParams;
-      await badgeContract.connect(minter).claimWithCreate(createParams, questId, sender.address, score, uri);
+      await badgeContract.connect(minter).claimWithInit(createParams, questId, sender.address, uri);
 
       const tokenURI = await badgeContract.tokenURI(1);
       expect(tokenURI).to.equal(uri);

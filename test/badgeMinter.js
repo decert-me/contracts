@@ -33,7 +33,6 @@ const updateParams = {
 
 const badgeParams = {
   'questId': 10000,
-  'score': 100000,
   'uri': 'ipfs://123',
 }
 
@@ -50,31 +49,31 @@ describe("Badge", async () => {
   const name = 'Decert Badge';
   const symbol = 'Decert';
   let updateScoreSig = '';
-  let claimWithCreateSig = '';
+  let claimWithInitSig = '';
   let snapshotId;
 
-  async function genClaimWithCreateSig(createParams, questId, score, uri, sender, signer) {
+  async function genClaimWithCreateSig(createParams, questId, to, uri, sender, signer) {
     let { creator, startTs, endTs, title, uri: questUri } = createParams;
-
-    const types = ['address', 'uint256', 'uint32', 'uint32', 'string', 'string', 'uint256', 'string', 'address', 'address'];
-    const params = [creator, questId, startTs, endTs, title, questUri, score, uri, badgeMinterContract.address, sender.address];
+    // console.log(creator, questId, startTs, endTs, title, questUri, to, uri, badgeMinterContract.address, sender.address)
+    const types = ['address', 'uint256', 'uint32', 'uint32', 'string', 'string', 'address', 'string', 'address', 'address'];
+    const params = [creator, questId, startTs, endTs, title, questUri, to, uri, badgeMinterContract.address, sender.address];
 
     const hash = ethers.utils.solidityKeccak256(types, params);
     const signature = await signer.signMessage(ethers.utils.arrayify(hash));
     return signature;
   }
 
-  async function genClaimWithScoreSig(to, questId, score, uri, sender, signer) {
-    const types = ['address', 'uint256', 'uint256', 'string', 'address', 'address'];
-    const params = [to, questId, score, uri, badgeMinterContract.address, sender.address];
+  async function genClaimWithScoreSig(to, questId, uri, sender, signer) {
+    const types = ['address', 'uint256', 'string', 'address', 'address'];
+    const params = [to, questId, uri, badgeMinterContract.address, sender.address];
     const hash = ethers.utils.solidityKeccak256(types, params);
     const signature = await signer.signMessage(ethers.utils.arrayify(hash));
     return signature;
   }
 
-  async function genUpdateScoreSig(to, questId, score, sender, signer) {
-    const types = ['address', 'uint256', 'uint256', 'address', 'address'];
-    const params = [to, questId, score, badgeMinterContract.address, sender.address];
+  async function genUpdateURISig(tokenId, uri, sender, signer) {
+    const types = ['uint256', 'string', 'address', 'address'];
+    const params = [tokenId, uri, badgeMinterContract.address, sender.address];
     const hash = ethers.utils.solidityKeccak256(types, params);
     const signature = await signer.signMessage(ethers.utils.arrayify(hash));
     return signature;
@@ -91,9 +90,9 @@ describe("Badge", async () => {
 
 
   async function genAirdropBadgeSig(params, sender, signer) {
-    const { questsId, receivers, scores } = params;
+    const { questsId, receivers } = params;
 
-    const hash = ethers.utils.solidityKeccak256(['string', 'uint256[]', 'address[]', 'uint256[]', 'address', 'address'], ['airdropBadge', questsId, receivers, scores, badgeMinterContract.address, sender.address]);
+    const hash = ethers.utils.solidityKeccak256(['string', 'uint256[]', 'address[]', 'address', 'address'], ['airdropBadge', questsId, receivers, badgeMinterContract.address, sender.address]);
 
     const signature = await signer.signMessage(ethers.utils.arrayify(hash));
     return signature;
@@ -115,8 +114,8 @@ describe("Badge", async () => {
     await badgeMinterContract.setSigner(signer.address);
     await badgeContract.setMinter(badgeMinterContract.address, true);
     let { questId, score, uri } = badgeParams;
-    claimWithCreateSig = await genClaimWithCreateSig(createParams, questId, score, uri, sender, signer);
-    claimWithScoreSig = await genClaimWithScoreSig(sender.address, questId, score, uri, sender, signer);
+    claimWithInitSig = await genClaimWithCreateSig(createParams, questId, sender.address, uri, sender, signer);
+    claimWithScoreSig = await genClaimWithScoreSig(sender.address, questId, uri, sender, signer);
 
     snapshotId = await ethers.provider.send("evm_snapshot");
   })
@@ -125,14 +124,14 @@ describe("Badge", async () => {
     snapshotId = await revertBlock(snapshotId);
   });
 
-  describe('claimWithCreate()', async () => {
+  describe('claimWithInit()', async () => {
 
     before(async () => {
     });
 
-    it("minter claimWithCreate", async () => {
+    it("minter claimWithInit", async () => {
       let { questId, score, uri } = badgeParams;
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
 
       let totalSupply = await badgeContract.totalSupply();
       expect(totalSupply).to.equal(1);
@@ -147,18 +146,15 @@ describe("Badge", async () => {
 
       let customQuestId = await badgeContract.badgeToQuest(totalSupply);
       expect(customQuestId).to.equal(questId);
-
-      let badgeScore = await badgeContract.scores(totalSupply);
-      expect(badgeScore).to.equal(score);
     });
 
-    it("claimWithCreate exists quest should revert", async () => {
+    it("claimWithInit exists quest should revert", async () => {
       let { questId, score, uri } = badgeParams;
 
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, creator.address, score, uri, claimWithCreateSig);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
 
       await expect(
-        badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, creator.address, score, uri, claimWithCreateSig)
+        badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig)
       ).to.be.revertedWithCustomError(badgeContract, 'QuestIdAlreadyExists');
     });
 
@@ -166,7 +162,7 @@ describe("Badge", async () => {
       let { questId, score, uri } = badgeParams;
 
       await expect(
-        badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, creator.address, score, uri, INVALID_SIG)
+        badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, INVALID_SIG)
       ).to.revertedWithCustomError(badgeMinterContract, 'InvalidSigner');
     });
 
@@ -174,7 +170,7 @@ describe("Badge", async () => {
       const beforeBalance = await ethers.provider.getBalance(creator.address);
 
       let { questId, score, uri } = badgeParams;
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig, { value: OneEther });
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig, { value: OneEther });
 
       const afterBalance = await ethers.provider.getBalance(creator.address);
       const gap = afterBalance.sub(beforeBalance);
@@ -185,114 +181,62 @@ describe("Badge", async () => {
     it('should emit a Donation event when donate', async () => {
       let { questId, score, uri } = badgeParams;
       await expect(
-        badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig, { value: OneEther })
+        badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig, { value: OneEther })
       ).to.emit(badgeMinterContract, 'Donation')
         .withArgs(sender.address, creator.address, OneEther.toString());
     });
   })
 
-  describe("updateScore", () => {
-    let updateScoreSig = '';
+  describe("updateURI", () => {
+    let updateURISig = '';
+    let sender,other;
     before(async () => {
+      accounts = await ethers.getSigners();
+      sender = accounts[3];
+      other = accounts[4];
       let { questId, score, uri } = badgeParams;
-      updateScoreSig = await genUpdateScoreSig(sender.address, questId, score, sender, signer);
+      updateURISig = await genUpdateURISig(1, uri, sender, signer);
     });
 
-    it('should revert "NotClaimedYet"', async () => {
+    it('should revert "ERC721: invalid token ID"', async () => {
       let { questId, score, uri } = badgeParams;
 
       await expect(
-        badgeMinterContract.connect(sender).updateScore(sender.address, questId, score, updateScoreSig)
-      ).to.revertedWithCustomError(badgeContract, 'NotClaimedYet');
+        badgeMinterContract.connect(sender).updateURI(1, uri, updateURISig)
+      ).to.revertedWith('ERC721: invalid token ID');
     });
 
     it('should revert "Invalid signer"', async () => {
       let { questId, score, uri } = badgeParams;
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
+
       await expect(
-        badgeMinterContract.connect(sender).updateScore(sender.address, questId, score, INVALID_SIG)
+        badgeMinterContract.connect(sender).updateURI(1, uri, INVALID_SIG)
       ).to.be.revertedWithCustomError(badgeMinterContract, 'InvalidSigner');
     });
 
-    it('should updateScore success', async () => {
+    it('should revert "Not Owner"', async () => {
       let { questId, score, uri } = badgeParams;
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
+      
+      updateURISig = await genUpdateURISig(1, uri, other, signer);
+      await expect(
+        badgeMinterContract.connect(other).updateURI(1, uri, updateURISig)
+      ).to.be.revertedWithCustomError(badgeMinterContract, 'NotOwner');
+    });
 
-      score = 100
-      updateScoreSig = await genUpdateScoreSig(sender.address, questId, score, sender, signer);
-      await badgeMinterContract.connect(sender).updateScore(sender.address, questId, score, updateScoreSig)
+    it('should updateURI success', async () => {
+      let { questId, score, uri } = badgeParams;
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
+
+      uri = "ipfs://ipfs-new"
+      updateURISig = await genUpdateURISig(1, uri, sender, signer);
+      await badgeMinterContract.connect(sender).updateURI(1, uri, updateURISig);
 
       let totalSupply = await badgeContract.totalSupply();
 
-      let badgeScore = await badgeContract.scores(totalSupply);
-      expect(badgeScore).to.equal(score);
-    });
-  });
-  describe("claimWithScore", () => {
-    let other;
-    before(async () => {
-      other = accounts[9];
-    });
-
-    it('should revert "NonexistentQuest"', async () => {
-      let { questId, score, uri } = badgeParams;
-      await expect(
-        badgeMinterContract.connect(sender).claimWithScore(sender.address, questId, score, uri, claimWithScoreSig)
-      ).to.revertedWithCustomError(badgeContract, 'NonexistentQuest');
-    });
-
-    it('should revert "Invalid signer"', async () => {
-      let { questId, score, uri } = badgeParams;
-      await expect(
-        badgeMinterContract.connect(sender).claimWithScore(sender.address, questId, score, uri, INVALID_SIG)
-      ).to.revertedWithCustomError(badgeMinterContract, 'InvalidSigner');
-    });
-
-    it('should revert "AlreadyHoldsBadge"', async () => {
-      let { questId, score, uri } = badgeParams;
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
-      await expect(
-        badgeMinterContract.connect(sender).claimWithScore(sender.address, questId, score, uri, claimWithScoreSig)
-      ).to.revertedWithCustomError(badgeContract, 'AlreadyHoldsBadge');
-    });
-
-
-    it('should claimWithScore success', async () => {
-      let { questId, score, uri } = badgeParams;
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
-      score = 100
-      claimWithScoreSig = await genClaimWithScoreSig(other.address, questId, score, uri, sender, signer);
-      await badgeMinterContract.connect(sender).claimWithScore(other.address, questId, score, uri, claimWithScoreSig);
-
-      let totalSupply = await badgeContract.totalSupply();
-      expect(totalSupply).to.equal(2);
-
-      let badgeScore = await badgeContract.scores(totalSupply);
-      expect(badgeScore).to.equal(score);
-    });
-
-    it('creator should receive eth after donation', async () => {
-      let { questId, score, uri } = badgeParams;
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
-      score = 100
-      const beforeBalance = await ethers.provider.getBalance(creator.address);
-
-      claimWithScoreSig = await genClaimWithScoreSig(other.address, questId, score, uri, sender, signer);
-      await badgeMinterContract.connect(sender).claimWithScore(other.address, questId, score, uri, claimWithScoreSig, { value: OneEther });
-
-      const afterBalance = await ethers.provider.getBalance(creator.address);
-      const gap = afterBalance.sub(beforeBalance);
-
-      expect(gap.toString()).to.equal(OneEther.toString());
-    });
-
-    it('should emit a Donation event when donate', async () => {
-      let { questId, score, uri } = badgeParams;
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
-      score = 100
-      await expect(
-        badgeMinterContract.connect(sender).claimWithScore(other.address, questId, score, uri, claimWithScoreSig, { value: OneEther })
-      ).to.emit(badgeMinterContract, 'Donation')
-        .withArgs(sender.address, creator.address, OneEther.toString());
+      let tokenURI = await badgeContract.tokenURI(totalSupply);
+      expect(tokenURI).to.equal(uri);
     });
   });
 
@@ -315,7 +259,7 @@ describe("Badge", async () => {
 
     it('should revert "Invalid signer"', async () => {
       let { questId, score, uri } = badgeParams;
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
 
       let { startTs, endTs, title, uri: questUri } = updateParams;
       await expect(
@@ -325,7 +269,7 @@ describe("Badge", async () => {
 
     it('should updateQuest success', async () => {
       let { questId, score, uri } = badgeParams;
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
 
       let { startTs, endTs, title, uri: questUri } = updateParams;
       await badgeMinterContract.connect(sender).updateQuest(questId, startTs, endTs, title, questUri, updateQuestSig);
@@ -352,22 +296,20 @@ describe("Badge", async () => {
     const receiver2 = getRandomAddress();
     before(async () => {
       caller = accounts[9]; // 任意
-      let { questId, score, uri } = badgeParams;
-      claimWithCreateSig = await genClaimWithCreateSig(createParams, questId, score, uri, sender, signer);
-
+      let { questId, uri } = badgeParams;
+      claimWithInitSig = await genClaimWithCreateSig(createParams, questId, sender.address, uri, sender, signer);
       creator = accounts[2];
       claimer = accounts[3];
     })
     it('should succeed when single address', async () => {
       let { questId, score, uri } = badgeParams;
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
 
       const questIds = [questId]
       const receivers = [receiver1];
-      const scores = [10];
       const uris = ["ipfs://12412"];
-      airdropBadgeSig = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers, 'scores': scores }, caller, signer);
-      await badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, scores, airdropBadgeSig);
+      airdropBadgeSig = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers }, caller, signer);
+      await badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, airdropBadgeSig);
 
       let questIdRes = await badgeContract.badgeToQuest(2);
       let totalSupply = await badgeContract.totalSupply();
@@ -375,11 +317,8 @@ describe("Badge", async () => {
       expect(questIdRes).to.equal(questId);
       expect(totalSupply).to.equal(2);
 
-
-      let scoreAfter = await badgeContract.scores(2);
-      expect(scoreAfter).to.equal(scores);
-
       let ownerAddress = await badgeContract.ownerOf(2);
+      console.log(ownerAddress)
       expect(ownerAddress).to.equal(receiver1);
 
       let ipfs1 = await badgeContract.tokenURI(2);
@@ -389,18 +328,18 @@ describe("Badge", async () => {
 
     it('should succeed when multi address', async () => {
       let { questId, score, uri } = badgeParams;
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
 
-      claimWithCreateSig = await genClaimWithCreateSig(createParams, questId + 1, score, uri, sender, signer);
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId + 1, caller.address, score, uri, claimWithCreateSig);
+      claimWithInitSig = await genClaimWithCreateSig(createParams, questId + 1, sender.address, uri, sender, signer);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId + 1, sender.address, uri, claimWithInitSig);
 
       const questIds = [questId, questId + 1];
       const receivers = [receiver1, receiver2];
       const scores = [10, 100];
       const uris = ["ipfs://12412", "ipfs://9877"];
-      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers, 'scores': scores }, caller, signer);
+      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers }, caller, signer);
 
-      await badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, scores, airdropBadgeSigMulti);
+      await badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, airdropBadgeSigMulti);
 
       let ownerAddress1 = await badgeContract.ownerOf(3);
       let ownerAddress2 = await badgeContract.ownerOf(4);
@@ -415,11 +354,6 @@ describe("Badge", async () => {
       expect(balance1).to.equal(1);
       expect(balance2).to.equal(1);
 
-      let score1 = await badgeContract.scores(3);
-      let score2 = await badgeContract.scores(4);
-      expect(score1).to.equal(scores[0]);
-      expect(score2).to.equal(scores[1]);
-
       let uri1 = await badgeContract.tokenURI(3);
       let uri2 = await badgeContract.tokenURI(4);
       expect(uri1).to.equal(uris[0]);
@@ -428,25 +362,20 @@ describe("Badge", async () => {
 
     it('should airdrop when batch token single address', async () => {
       let { questId, score, uri } = badgeParams;
-      claimWithCreateSig = await genClaimWithCreateSig(createParams, questId, score, uri, sender, signer);
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
-      claimWithCreateSig = await genClaimWithCreateSig(createParams, questId + 1, score, uri, sender, signer);
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId + 1, sender.address, score, uri, claimWithCreateSig);
+      claimWithInitSig = await genClaimWithCreateSig(createParams, questId, sender.address, uri, sender, signer);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
+      claimWithInitSig = await genClaimWithCreateSig(createParams, questId + 1, sender.address, uri, sender, signer);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId + 1, sender.address, uri, claimWithInitSig);
 
       const questIds = [questId, questId + 1];
       const receivers = [receiver1, receiver1];
       const scores = [10, 100];
       const uris = ["ipfs://12412", "ipfs://9877"];
-      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers, 'scores': scores }, caller, signer);
-      await badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, scores, airdropBadgeSigMulti);
+      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers }, caller, signer);
+      await badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, airdropBadgeSigMulti);
 
       let balance1 = await badgeContract.balanceOf(receiver1);
       expect(balance1).to.equal(2);
-
-      let score1 = await badgeContract.scores(3);
-      let score2 = await badgeContract.scores(4);
-      expect(score1).to.equal(scores[0]);
-      expect(score2).to.equal(scores[1]);
 
       let uri1 = await badgeContract.tokenURI(3);
       let uri2 = await badgeContract.tokenURI(4);
@@ -456,62 +385,62 @@ describe("Badge", async () => {
 
     it('should failed when none address', async () => {
       let { questId, score, uri } = badgeParams;
-      claimWithCreateSig = await genClaimWithCreateSig(createParams, questId, score, uri, sender, signer);
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
+      claimWithInitSig = await genClaimWithCreateSig(createParams, questId, sender.address, uri, sender, signer);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
 
       const questIds = [];
       const receivers = [];
       const scores = [];
       const uris = [];
-      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers, 'scores': scores }, caller, signer);
+      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers }, caller, signer);
       await expect(
-        badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, scores, airdropBadgeSigMulti)
+        badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, airdropBadgeSigMulti)
       ).to.be.revertedWithCustomError(badgeMinterContract, 'InvalidArray');
     });
 
     it('should failed address and length not equal', async () => {
       let { questId, score, uri } = badgeParams;
-      claimWithCreateSig = await genClaimWithCreateSig(createParams, questId, score, uri, sender, signer);
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
+      claimWithInitSig = await genClaimWithCreateSig(createParams, questId, sender.address, uri, sender, signer);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
 
       const questIds = [];
       const receivers = [receiver1];
       const scores = [];
       const uris = [];
-      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers, 'scores': scores }, caller, signer);
+      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers }, caller, signer);
       await expect(
-        badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, scores, airdropBadgeSigMulti)
+        badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, airdropBadgeSigMulti)
       ).to.be.revertedWithCustomError(badgeMinterContract, 'InvalidArray');
     });
 
     it('should failed with invalid signer', async () => {
       let { questId, score, uri } = badgeParams;
-      claimWithCreateSig = await genClaimWithCreateSig(createParams, questId, score, uri, sender, signer);
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
+      claimWithInitSig = await genClaimWithCreateSig(createParams, questId, sender.address, uri, sender, signer);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
 
       const questIds = [questId];
       const receivers = [receiver1];
       const scores = [10];
       const uris = ["ipfs://12412"];
       await expect(
-        badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, scores, INVALID_SIG)
+        badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, INVALID_SIG)
       ).to.be.revertedWithCustomError(badgeMinterContract, 'InvalidSigner');
     });
 
     it('should emit a Airdroped event', async () => {
       let { questId, score, uri } = badgeParams;
-      claimWithCreateSig = await genClaimWithCreateSig(createParams, questId, score, uri, sender, signer);
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
+      claimWithInitSig = await genClaimWithCreateSig(createParams, questId, sender.address, uri, sender, signer);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
 
       const questIds = [questId];
       const receivers = [receiver1];
       const scores = [10];
       const uris = ["ipfs://12412"];
-      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers, 'scores': scores }, caller, signer);
+      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers }, caller, signer);
       await expect(
-        badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, scores, airdropBadgeSigMulti)
+        badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, airdropBadgeSigMulti)
       ).to.emit(badgeMinterContract, 'Airdroped')
-        .withArgs(questId, receivers[0], scores[0], uris[0]);
+        .withArgs(questId, receivers[0], uris[0]);
     });
 
     it('should skip when now > endTs', async () => {
@@ -520,16 +449,16 @@ describe("Badge", async () => {
       const questData_ = Object.assign({}, createParams);
       questData_.endTs = endTs;
       let { questId, score, uri } = badgeParams;
-      claimWithCreateSig = await genClaimWithCreateSig(questData_, questId, score, uri, sender, signer);
-      await badgeMinterContract.connect(sender).claimWithCreate(questData_, questId, sender.address, score, uri, claimWithCreateSig);
+      claimWithInitSig = await genClaimWithCreateSig(questData_, questId, sender.address, uri, sender, signer);
+      await badgeMinterContract.connect(sender).claimWithInit(questData_, questId, sender.address, uri, claimWithInitSig);
       // add time 
       await network.provider.send("evm_setNextBlockTimestamp", [Math.floor(Date.now() / 1000) + 60]);
       const questIds = [questId];
       const receivers = [receiver1];
       const scores = [10];
       const uris = ["ipfs://12412"];
-      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers, 'scores': scores }, caller, signer);
-      badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, scores, airdropBadgeSigMulti);
+      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers }, caller, signer);
+      badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, airdropBadgeSigMulti);
 
       let balance1 = await badgeContract.balanceOf(receiver1);
       expect(balance1).to.equal(0);
@@ -554,15 +483,15 @@ describe("Badge", async () => {
       questData_.startTs = startTs;
       questData_.endTs = endTs;
       let { questId, score, uri } = badgeParams;
-      claimWithCreateSig = await genClaimWithCreateSig(questData_, questId, score, uri, sender, signer);
-      await badgeMinterContract.connect(sender).claimWithCreate(questData_, questId, sender.address, score, uri, claimWithCreateSig);
+      claimWithInitSig = await genClaimWithCreateSig(questData_, questId, sender.address, uri, sender, signer);
+      await badgeMinterContract.connect(sender).claimWithInit(questData_, questId, sender.address, uri, claimWithInitSig);
       const questIds = [questId];
       const receivers = [receiver2];
       const scores = [10];
       const uris = ["ipfs://12412"];
 
-      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers, 'scores': scores }, caller, signer);
-      await badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, scores, airdropBadgeSigMulti);
+      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers }, caller, signer);
+      await badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, airdropBadgeSigMulti);
 
 
       let balance1 = await badgeContract.balanceOf(receiver2);
@@ -570,36 +499,35 @@ describe("Badge", async () => {
 
       let totalSupply = await badgeContract.totalSupply()
       expect(totalSupply).to.equal(2);
-
     });
 
     it('should revert "AlreadyHoldsBadge" when has claimed before', async () => {
       let { questId, score, uri } = badgeParams;
-      claimWithCreateSig = await genClaimWithCreateSig(createParams, questId, score, uri, sender, signer);
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
+      claimWithInitSig = await genClaimWithCreateSig(createParams, questId, sender.address, uri, sender, signer);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
       //second
       const questIds = [questId, questId];
       const receivers = [sender.address, receiver2];
       const scores = [10, 200];
       const uris = ["ipfs://12412", "ipfs://12412"];
-      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers, 'scores': scores }, caller, signer);
+      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers }, caller, signer);
       await expect(
-        badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, scores, airdropBadgeSigMulti)
+        badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, airdropBadgeSigMulti)
       ).to.revertedWithCustomError(badgeContract, 'AlreadyHoldsBadge');
     });
 
     it('should revert "AlreadyHoldsBadge" when has airdrop before', async () => {
       let { questId, score, uri } = badgeParams;
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
 
       // first
       const questIds = [questId, questId];
       const receivers = [receiver1, receiver2];
       const scores = [10, 200];
       const uris = ["ipfs://12412", "ipfs://12412"];
-      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers, 'scores': scores }, caller, signer);
+      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers }, caller, signer);
 
-      await badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, scores, airdropBadgeSigMulti);
+      await badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, airdropBadgeSigMulti);
 
       // second
       const questIds2 = [questId];
@@ -608,7 +536,7 @@ describe("Badge", async () => {
       const uris2 = ["ipfs://12412"];
       airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds2, 'receivers': receivers2, 'scores': scores2 }, caller, signer);
       await expect(
-        badgeMinterContract.connect(caller).airdropBadge(questIds2, receivers2, uris2, scores2, airdropBadgeSigMulti)
+        badgeMinterContract.connect(caller).airdropBadge(questIds2, receivers2, uris2, airdropBadgeSigMulti)
       ).to.revertedWithCustomError(badgeContract, 'AlreadyHoldsBadge');
     });
 
@@ -618,9 +546,9 @@ describe("Badge", async () => {
       const receivers = [receiver1, receiver2];
       const scores = [10, 200];
       const uris = ["ipfs://12412", "ipfs://12412"];
-      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers, 'scores': scores }, caller, signer);
+      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers }, caller, signer);
 
-      await badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, scores, airdropBadgeSigMulti);
+      await badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, airdropBadgeSigMulti);
 
       expect(await badgeContract.balanceOf(receiver2)).to.equal(0);
       expect(await badgeContract.balanceOf(receiver1)).to.equal(0);
@@ -628,15 +556,15 @@ describe("Badge", async () => {
 
     it('should skip airdrop multi none existent token', async () => {
       let { questId, score, uri } = badgeParams;
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
 
       const questIds = [questId, questId + 1];
       const receivers = [receiver1, receiver2];
       const scores = [10, 200];
       const uris = ["ipfs://12412", "ipfs://12412"];
-      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers, 'scores': scores }, caller, signer);
+      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers }, caller, signer);
 
-      await badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, scores, airdropBadgeSigMulti);
+      await badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, airdropBadgeSigMulti);
 
       expect(await badgeContract.balanceOf(receiver1)).to.equal(1);
       expect(await badgeContract.balanceOf(receiver2)).to.equal(0);
@@ -644,47 +572,33 @@ describe("Badge", async () => {
 
     it('should revert "InvalidArray" when receivers length < tokenIds length', async () => {
       let { questId, score, uri } = badgeParams;
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
 
       const questIds = [questId, questId + 1, questId + 3];
       const receivers = [receiver1, receiver2];
       const scores = [10, 200];
       const uris = ["ipfs://12412", "ipfs://12412"];
-      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers, 'scores': scores }, caller, signer);
+      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers }, caller, signer);
 
       await expect(
-        badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, scores, airdropBadgeSigMulti)
+        badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, airdropBadgeSigMulti)
       ).to.revertedWithCustomError(badgeMinterContract, 'InvalidArray');
     });
 
     it('should revert "InvalidArray" when receivers length > tokenIds length', async () => {
       let { questId, score, uri } = badgeParams;
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
+      await badgeMinterContract.connect(sender).claimWithInit(createParams, questId, sender.address, uri, claimWithInitSig);
 
       const questIds = [questId];
       const receivers = [receiver1, receiver2];
       const scores = [10, 200];
       const uris = ["ipfs://12412", "ipfs://12412"];
-      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers, 'scores': scores }, caller, signer);
+      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers }, caller, signer);
 
       await expect(
-        badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, scores, airdropBadgeSigMulti)
+        badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, airdropBadgeSigMulti)
       ).to.revertedWithCustomError(badgeMinterContract, 'InvalidArray');
     });
 
-    it('should revert "InvalidArray" when receivers length > scores length', async () => {
-      let { questId, score, uri } = badgeParams;
-      await badgeMinterContract.connect(sender).claimWithCreate(createParams, questId, sender.address, score, uri, claimWithCreateSig);
-
-      const questIds = [questId, questId];
-      const receivers = [receiver1, receiver2];
-      const scores = [10];
-      const uris = ["ipfs://12412", "ipfs://12412"];
-      airdropBadgeSigMulti = await genAirdropBadgeSig({ 'questsId': questIds, 'receivers': receivers, 'scores': scores }, caller, signer);
-
-      await expect(
-        badgeMinterContract.connect(caller).airdropBadge(questIds, receivers, uris, scores, airdropBadgeSigMulti)
-      ).to.revertedWithCustomError(badgeMinterContract, 'InvalidArray');
-    });
   });
 });
