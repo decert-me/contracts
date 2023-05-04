@@ -160,14 +160,7 @@ contract BadgeMinter is Ownable {
             address receiver = receivers[i];
             uint questId = questIds[i];
             string memory uri = uris[i];
-
-            IBadge.QuestData memory questData;
-            questData = badge.getQuest(questId);
-            if (
-                block.timestamp < questData.startTs ||
-                block.timestamp > questData.endTs
-            ) continue;
-            // TODO: 上面的判断是否重复（badge._mint()有相同逻辑）
+            
             badge.claim(receiver, questId, uri);
             emit Airdroped(questId, receiver, uri);
         }

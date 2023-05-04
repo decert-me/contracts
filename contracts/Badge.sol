@@ -26,12 +26,12 @@ contract Badge is IBadge, SBTBase, Ownable {
     mapping(uint256 => string) private _tokenURIs;
     uint256 _totalSupply = 0;
 
-    event SetMinter(address minter, bool enabled);
-    event InitQuest(uint256 indexed questId, QuestData questData);
-    event UpdateQuest(uint256 indexed questId, QuestData questData);
+    event MinterSet(address minter, bool enabled);
+    event QuesteInit(uint256 indexed questId, QuestData questData);
+    event QuestUpdated(uint256 indexed questId, QuestData questData);
     event Claimed(uint256 indexed questId, address indexed sender);
     event Donation(address from, address to, uint256 amount);
-    event UpdateURI(uint indexed tokenId, string uri);
+    event URIUpdated(uint indexed tokenId, string uri);
 
     constructor() SBTBase("Decert Badge", "Decert") {}
 
@@ -42,7 +42,7 @@ contract Badge is IBadge, SBTBase, Ownable {
         if (minter == address(0)) revert InvalidMinter();
 
         minters[minter] = enabled;
-        emit SetMinter(minter, enabled); //TODO: 事件名建议使用名词/过去式
+        emit MinterSet(minter, enabled);
     }
 
     modifier onlyMinter() {
@@ -94,7 +94,7 @@ contract Badge is IBadge, SBTBase, Ownable {
 
     function updateURI(uint tokenId, string memory uri) external onlyMinter {
         _setTokenURI(tokenId, uri);
-        emit UpdateURI(tokenId, uri); //TODO: 事件名建议使用名词/过去式
+        emit URIUpdated(tokenId, uri);
     }
 
     function updateQuest(
@@ -112,12 +112,12 @@ contract Badge is IBadge, SBTBase, Ownable {
         quest.title = title;
         quest.uri = questUri;
 
-        emit UpdateQuest(questId, quest); //TODO: 事件名建议使用名词/过去式
+        emit QuestUpdated(questId, quest);
     }
 
     function _initQuest(uint256 questId, QuestData memory quest) internal {
         quests[questId] = quest;
-        emit InitQuest(questId, quest); //TODO: 事件名建议使用名词/过去式
+        emit QuesteInit(questId, quest);
     }
 
     function getQuest(
@@ -126,7 +126,7 @@ contract Badge is IBadge, SBTBase, Ownable {
         return quests[questId];
     }
 
-    function getQuestBadgeNum(uint256 questId) external view returns (uint256) {
+    function getBadgeNum(uint256 questId) external view returns (uint256) {
         return _questBadgeNum[questId];
     }
 
@@ -138,15 +138,12 @@ contract Badge is IBadge, SBTBase, Ownable {
         uint256 tokenId,
         string memory _tokenURI
     ) internal virtual {
-        require(
-            _exists(tokenId),
-            "ERC721URIStorage: URI set of nonexistent token"
-        );
-        // TODO: 统一改成if...revert...；没有引入ERC721URIStorage，不需要标记它
+        if (!_exists(tokenId)) revert NonexistentToken();
+
         _tokenURIs[tokenId] = _tokenURI;
     }
 
-     function tokenURI(
+    function tokenURI(
         uint256 tokenId
     ) public view virtual override returns (string memory) {
         if (!_exists(tokenId)) revert NonexistentToken();

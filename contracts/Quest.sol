@@ -23,14 +23,14 @@ contract Quest is IQuest, SBTBase, Ownable {
     mapping(uint256 => QuestData) public quests;
     mapping(uint256 => uint256) public questBadgeNum;
 
-    event SetMinter(address minter, bool enabled);
+    event MinterSet(address minter, bool enabled);
     event QuestCreated(
         address indexed creator,
         uint256 indexed tokenId,
         QuestData questData
     );
-    event QuestBadgeNumUpdate(uint256 indexed questId, uint256 badgeNum);
-    event QuestModify(
+    event BadgeNumUpdated(uint256 indexed questId, uint256 badgeNum);
+    event QuestModified(
         address indexed creator,
         uint256 indexed tokenId,
         QuestData questData
@@ -46,7 +46,7 @@ contract Quest is IQuest, SBTBase, Ownable {
         if (minter == address(0)) revert InvalidMinter();
 
         minters[minter] = enabled;
-        emit SetMinter(minter, enabled); // TODO: 事件名建议使用名词/过去式
+        emit MinterSet(minter, enabled);
     }
 
     modifier onlyMinter() {
@@ -76,7 +76,7 @@ contract Quest is IQuest, SBTBase, Ownable {
         if (!_exists(tokenId)) revert NonexistentToken();
 
         quests[tokenId] = questData;
-        emit QuestModify(msg.sender, tokenId, questData);// TODO: 事件名建议使用名词/过去式
+        emit QuestModified(msg.sender, tokenId, questData);
     }
 
     function getQuest(
@@ -87,19 +87,17 @@ contract Quest is IQuest, SBTBase, Ownable {
         return quests[tokenId];
     }
 
-    // TODO: 建议缩短函数名为：updateBadgeNum
-    function updateQuestBadgeNum(
+    function updateBadgeNum(
         uint256 questId,
         uint256 badgeNum
     ) external onlyMinter {
         if (!_exists(questId)) revert NonexistentToken();
 
         questBadgeNum[questId] = badgeNum;
-        emit QuestBadgeNumUpdate(questId, badgeNum);// TODO: 建议修改事件名：BadgeNumUpdated
+        emit BadgeNumUpdated(questId, badgeNum);
     }
 
-    // TODO: 建议缩短函数名为：getBadgeNum
-    function getQuestBadgeNum(uint256 questId) external view returns (uint256) {
+    function getBadgeNum(uint256 questId) external view returns (uint256) {
         if (!_exists(questId)) revert NonexistentToken();
 
         return questBadgeNum[questId];

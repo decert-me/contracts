@@ -76,10 +76,10 @@ contract QuestMetadata is IMetadata {
         string memory uri = questData.uri;
         uint256 numOfBadge;
 
-        if (quest.getQuestBadgeNum(tokenId) != 0) {
-            numOfBadge = quest.getQuestBadgeNum(tokenId);
+        if (quest.getBadgeNum(tokenId) != 0) {
+            numOfBadge = quest.getBadgeNum(tokenId);
         } else {
-            numOfBadge = badge.getQuestBadgeNum(tokenId);
+            numOfBadge = badge.getBadgeNum(tokenId);
         }
         return
             string(

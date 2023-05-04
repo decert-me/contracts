@@ -89,7 +89,7 @@ contract QuestMinter is Ownable {
         quest.modifyQuest(tokenId, questData);
     }
 
-    function updateQuestBadgeNum(
+    function updateBadgeNum(
         uint256 questId,
         uint256 badgeNum,
         bytes calldata signature
@@ -104,7 +104,7 @@ contract QuestMinter is Ownable {
         );
         if (!_verify(hash, signature)) revert InvalidSigner();
 
-        quest.updateQuestBadgeNum(questId, badgeNum);
+        quest.updateBadgeNum(questId, badgeNum);
     }
 
     function _verify(
