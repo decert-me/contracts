@@ -28,9 +28,9 @@ interface IQuest is IERC721 {
         QuestData calldata questData
     ) external;
 
-    function updateQuestBadgeNum(uint256 questId, uint256 badgeNum) external;
+    function updateBadgeNum(uint256 questId, uint256 badgeNum) external;
 
-    function getQuestBadgeNum(uint256 questId) external view returns (uint256);
+    function getBadgeNum(uint256 questId) external view returns (uint256);
 
     function exists(uint256 tokenId) external view returns (bool);
 }

@@ -34,7 +34,7 @@ interface IBadge is IERC721 {
         string memory questUri
     ) external;
 
-    function getQuestBadgeNum(uint256 questId) external view returns (uint256);
+    function getBadgeNum(uint256 questId) external view returns (uint256);
 
     function getQuest(uint256 questId) external view returns (QuestData memory);
 
