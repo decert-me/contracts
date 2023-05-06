@@ -27,7 +27,7 @@ contract Badge is IBadge, SBTBase, Ownable {
     uint256 _totalSupply = 0;
 
     event MinterSet(address minter, bool enabled);
-    event QuesteInit(uint256 indexed questId, QuestData questData);
+    event QuestInit(uint256 indexed questId, QuestData questData);
     event QuestUpdated(uint256 indexed questId, QuestData questData);
     event Claimed(uint256 indexed tokenId, uint256 questId, address sender);
     event Donation(address from, address to, uint256 amount);
@@ -117,7 +117,7 @@ contract Badge is IBadge, SBTBase, Ownable {
 
     function _initQuest(uint256 questId, QuestData memory quest) internal {
         quests[questId] = quest;
-        emit QuesteInit(questId, quest);
+        emit QuestInit(questId, quest);
     }
 
     function getQuest(
