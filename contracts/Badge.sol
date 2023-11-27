@@ -21,7 +21,7 @@ contract Badge is IBadge, SBTBase, Ownable {
     mapping(address => bool) public minters;
     mapping(uint256 => uint256) public badgeToQuest;
     mapping(uint256 => uint256) _questBadgeNum;
-    mapping(address => mapping(uint256 => uint256)) addrToQuestToBadge;
+    mapping(address => mapping(uint256 => uint256)) public addrToQuestToBadge;
     mapping(uint256 => QuestData) quests;
     mapping(uint256 => string) private _tokenURIs;
     uint256 _totalSupply = 0;
