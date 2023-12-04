@@ -120,4 +120,8 @@ contract QuestMinter is Ownable {
     ) internal pure returns (address) {
         return msgHash.toEthSignedMessageHash().recover(signature);
     }
+
+    function setStartTokenId(uint256 _startTokenId) external onlyOwner {
+        startTokenId = _startTokenId;
+    }
 }
