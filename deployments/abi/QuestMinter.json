@@ -11,6 +11,7 @@
   "function quest() view returns (address)",
   "function renounceOwnership()",
   "function setSigner(address)",
+  "function setStartTokenId(uint256)",
   "function signer() view returns (address)",
   "function startTokenId() view returns (uint256)",
   "function transferOwnership(address)",

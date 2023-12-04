@@ -69,6 +69,7 @@ async function main() {
         await questInstance.connect(owner).setMetaContract(questMetadataInstance.address);
         console.log('\nQuest setMetaContract', questMetadataInstance.address);
 
+        await questMinterInstance.connect(owner).setStartTokenId(20000);
     }
 
     {
