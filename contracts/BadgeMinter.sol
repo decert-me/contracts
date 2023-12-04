@@ -74,6 +74,35 @@ contract BadgeMinter is Ownable {
         }
     }
 
+    function initQuest(
+        uint256 questId,
+        IBadge.QuestData calldata questData,
+        bytes calldata signature
+    ) external {
+        address creator = questData.creator;
+        uint32 startTs = questData.startTs;
+        uint32 endTs = questData.endTs;
+        string memory title = questData.title;
+        string memory questUri = questData.uri;
+
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                creator,
+                questId,
+                startTs,
+                endTs,
+                title,
+                questUri,
+                address(this),
+                address(msg.sender)
+            )
+        );
+
+        if (!_verify(hash, signature)) revert InvalidSigner();
+
+        badge.initQuest(questId, questData);
+    }
+
     function claim(
         address to,
         uint256 questId,
@@ -162,7 +191,7 @@ contract BadgeMinter is Ownable {
             address receiver = receivers[i];
             uint questId = questIds[i];
             string memory uri = uris[i];
-            
+
             IBadge.QuestData memory questData;
             questData = badge.getQuest(questId);
             if (

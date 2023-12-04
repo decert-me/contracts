@@ -13,11 +13,7 @@ interface IBadge is IERC721 {
 
     function setMinter(address minter, bool enabled) external;
 
-    function claim(
-        address to,
-        uint256 questId,
-        string memory uri
-    ) external;
+    function claim(address to, uint256 questId, string memory uri) external;
 
     function claimWithInit(
         IBadge.QuestData calldata questData,
@@ -39,6 +35,8 @@ interface IBadge is IERC721 {
     function getQuest(uint256 questId) external view returns (QuestData memory);
 
     function totalSupply() external view returns (uint256);
-    
+
     function updateURI(uint tokenId, string memory uri) external;
+
+    function initQuest(uint256 questId, QuestData calldata questData) external;
 }

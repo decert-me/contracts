@@ -29,7 +29,7 @@ contract Badge is IBadge, SBTBase, Ownable {
     event MinterSet(address minter, bool enabled);
     event QuestInit(uint256 indexed questId, QuestData questData);
     event QuestUpdated(uint256 indexed questId, QuestData questData);
-    event Claimed(uint256 indexed tokenId, uint256 questId, address sender);
+    event Claimed(uint256 indexed tokenId, uint256 questId, address receiver);
     event Donation(address from, address to, uint256 amount);
     event URIUpdated(uint indexed tokenId, string uri);
 
@@ -92,6 +92,15 @@ contract Badge is IBadge, SBTBase, Ownable {
         _claim(to, questId, uri);
     }
 
+    function initQuest(
+        uint256 questId,
+        QuestData calldata questData
+    ) external onlyMinter {
+        if (_questBadgeNum[questId] != 0) revert QuestIdAlreadyExists();
+
+        _initQuest(questId, questData);
+    }
+
     function updateURI(uint tokenId, string memory uri) external onlyMinter {
         _setTokenURI(tokenId, uri);
         emit URIUpdated(tokenId, uri);
@@ -116,7 +125,9 @@ contract Badge is IBadge, SBTBase, Ownable {
     }
 
     function _initQuest(uint256 questId, QuestData memory quest) internal {
+        if (quests[questId].creator!=address(0)) revert QuestIdAlreadyExists();
         quests[questId] = quest;
+
         emit QuestInit(questId, quest);
     }
 
