@@ -18,11 +18,19 @@ async function revertBlock(snapshotId) {
   return newSnapshotId;
 }
 
+
 const questData = {
   startTs: 0,
   endTs: 4294967295,
   title: 'title',
   uri: 'uri',
+}
+
+const mintParams = {
+  'to': provider.createEmptyWallet().address,
+  'id': 0,
+  'questData': questData,
+  'data': '0x',
 }
 
 const questDataNew = {
@@ -180,6 +188,18 @@ describe('QuestMinter', async () => {
       }
     });
 
+    it('should pass exists TokenId', async () => {
+      let { id, to, questData, data } = mintParams;
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+      await questContract.connect(owner).setMinter(owner.address, true);
+      await questContract.connect(owner).mint(to, InitStartTokenId+1, questData, data);
+      await questContract.connect(owner).mint(to, InitStartTokenId+2, questData, data);
+      await questContract.connect(owner).setMinter(minter.address, true);
+      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+      let startTokenId = await questMinterContract.startTokenId()
+      expect(startTokenId).to.equal(InitStartTokenId + 4);
+    });
+
     it('should emit QuestCreated event', async () => {
       await expect(
         questMinterContract.connect(creator).createQuest(questData, createQuestSig)
@@ -290,6 +310,20 @@ describe('QuestMinter', async () => {
       await questMinterContract.connect(creator).updateBadgeNum(InitStartTokenId, questBadgeNum, updateQuestBadgeSig);
       let questBadgeNumAfter = await questContract.questBadgeNum(InitStartTokenId)
       expect(questBadgeNumAfter).to.equal(questBadgeNum);
+    });
+  });
+  describe('setStartTokenId()', () => {
+    it('should revert onlyOwner', async () => {
+      await expect(
+        questMinterContract.connect(accounts[1]).setStartTokenId(10000)
+      ).to.revertedWith(REVERT_MSGS['OnlyOwner']);
+    });
+
+    it('owner should succeed', async () => {
+      await expect(
+        questMinterContract.connect(owner).setStartTokenId(20000)
+      ).to.emit(questMinterContract, 'StartTokenIdChanged')
+        .withArgs(20000);
     });
   });
 });

@@ -18,7 +18,7 @@ async function revertBlock(snapshotId) {
 }
 
 const AddressZero = ethers.constants.AddressZero;
-
+const OneEther = ethers.utils.parseEther('1.0');
 
 const questData = {
   startTs: 0,
@@ -50,7 +50,7 @@ describe("Quest", async () => {
   const symbol = 'DQuest';
   let snapshotId;
   let minter;
-
+  let other;
   before(async () => {
     const Badge = await ethers.getContractFactory('Badge');
     badgeContract = await Badge.deploy();
@@ -67,7 +67,7 @@ describe("Quest", async () => {
     accounts = await ethers.getSigners();
     owner = accounts[0];
     minter = accounts[1];
-
+    other = accounts[2];
     // set minter
     await questContract.setMinter(minter.address, true);
     await badgeContract.setMinter(minter.address, true);
@@ -166,23 +166,38 @@ describe("Quest", async () => {
 
       await expect(questContract.connect(accounts[2]).modifyQuest(id, questData)).to.be.revertedWithCustomError(questContract, 'OnlyMinter');
     });
+    it("not exists should revert", async () => {
+      let { to, id, questData, data } = mintParams;
+
+      await expect(questContract.connect(minter).modifyQuest(id, questData)).to.be.revertedWithCustomError(questContract, 'NonexistentToken');
+    });
+    it("should success", async () => {
+      let { to, id, questData, data } = mintParams;
+      await questContract.connect(minter).mint(to, id, questData, data);
+      let startTs = 100
+      let endTs = 110
+      let title = 'title2'
+      let uri = 'uri2'
+      await questContract.connect(minter).modifyQuest(id, { startTs, endTs, title, uri });
+
+      let questData2 = await questContract.quests(id);
+      expect(questData2.startTs).to.equal(startTs);
+      expect(questData2.endTs).to.equal(endTs);
+      expect(questData2.title).to.equal(title);
+      expect(questData2.uri).to.equal(uri);
+    });
   });
 
   describe('getQuest()', async () => {
-    it("None existent quest", async () => {
-      const questData = await questContract.quests(1);
-      const { startTs, endTs, title, uri } = questData;
-      expect(startTs).to.equal(questData.startTs);
-      expect(endTs).to.equal(questData.endTs);
-      expect(title).to.equal('');
-      expect(uri).to.equal('');
+    it("None existent quest should revert", async () => {
+      await expect(questContract.getQuest(1)).to.be.revertedWithCustomError(questContract, 'NonexistentToken');
     });
 
     it("existent quest", async () => {
       let { id, to, questData, data } = mintParams;
       await questContract.connect(minter).mint(to, id, questData, data);
 
-      const questData2 = await questContract.quests(id);
+      const questData2 = await questContract.getQuest(id);
       const { startTs, endTs, title, uri } = questData2;
       expect(startTs).to.equal(questData.startTs);
       expect(endTs).to.equal(questData.endTs);
@@ -203,6 +218,21 @@ describe("Quest", async () => {
       let { id, to, questData, data } = mintParams;
       await questContract.connect(minter).mint(to, id, questData, data);
 
+      const uri = await questContract.tokenURI(id);
+      expect(uri).to.be.not.null;
+    });
+    it("numOfBadge should be correct", async () => {
+      let { id, to, questData, data } = mintParams;
+      await questContract.connect(minter).mint(to, id, questData, data);
+      
+      const receiver = accounts[3];
+
+      let questBadgeNum = 1000;
+
+      await questContract.connect(minter).updateBadgeNum(id, questBadgeNum);
+
+      const numOfBadge = await questContract.getBadgeNum(id);
+      expect(numOfBadge).to.equal(questBadgeNum);
       const uri = await questContract.tokenURI(id);
       expect(uri).to.be.not.null;
     });
@@ -246,6 +276,13 @@ describe("Quest", async () => {
   })
 
   describe('SetMetaContract', async () => {
+    it("should revert not owner", async () => {
+      expect(await questContract.meta()).to.equal(questMetadataContract.address);
+      await expect(
+        questContract.connect(other).setMetaContract(questContract.address)
+      ).to.revertedWith('Ownable: caller is not the owner');
+    });
+
     it("should revert set zero address", async () => {
       await expect(
         questContract.connect(owner).setMetaContract(AddressZero)
@@ -262,6 +299,18 @@ describe("Quest", async () => {
   });
   describe('updateBadgeNum()', () => {
     let questBadgeNum = 1000;
+
+    it('should revert "onlyMinter""', async () => {
+      let { id, to, questData, data } = mintParams;
+      const receiver = accounts[3];
+      const newReceiver = provider.createEmptyWallet();
+
+      await questContract.connect(minter).mint(receiver.address, id, questData, data);
+
+      await expect(
+        questContract.connect(other).updateBadgeNum(100, questBadgeNum)
+      ).to.revertedWithCustomError(questContract, 'OnlyMinter');
+    });
 
     it('should revert "NonexistentToken""', async () => {
       await expect(
@@ -281,4 +330,35 @@ describe("Quest", async () => {
       expect(questBadgeNumAfter).to.equal(questBadgeNum);
     });
   });
+  describe('donate()', () => {
+    it("should emit Donation event", async () => {
+      let { id, to, questData, data } = mintParams;
+      const { startTs, endTs, supply, title, uri } = questData;
+
+      await questContract.connect(minter).mint(to, id, questData, data)
+
+      await expect(
+        questContract.connect(minter).donate(id, { value: OneEther })
+      ).to.emit(questContract, 'Donation')
+        .withArgs(minter.address, to, OneEther);
+    });
+  });
+
+  describe('getBadgeNum()', async () => {
+    it("None existent quest should revert", async () => {
+      await expect(questContract.getBadgeNum(1)).to.be.revertedWithCustomError(questContract, 'NonexistentToken');
+    });
+
+    it("existent quest", async () => {
+      let { id, to, questData, data } = mintParams;
+      await questContract.connect(minter).mint(to, id, questData, data);
+
+      let badgeNum = 100;
+      await questContract.connect(minter).updateBadgeNum(id, badgeNum);
+
+      const badgeNum2 = await questContract.getBadgeNum(id);
+
+      expect(badgeNum2).to.equal(badgeNum);
+    });
+  })
 });

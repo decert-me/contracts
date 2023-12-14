@@ -5,6 +5,7 @@
   "error NotCreator()",
   "event OwnershipTransferred(address indexed,address indexed)",
   "event SignerChanged(address)",
+  "event StartTokenIdChanged(uint256)",
   "function createQuest(tuple(uint32,uint32,string,string),bytes)",
   "function modifyQuest(uint256,tuple(uint32,uint32,string,string),bytes)",
   "function owner() view returns (address)",

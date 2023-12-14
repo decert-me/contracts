@@ -1,6 +1,7 @@
 [
   "constructor()",
   "error AlreadyHoldsBadge()",
+  "error InvalidCreator()",
   "error InvalidMinter()",
   "error NonexistentQuest()",
   "error NonexistentToken()",

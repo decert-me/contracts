@@ -18,6 +18,7 @@ contract QuestMinter is Ownable {
     address public signer;
 
     event SignerChanged(address signer);
+    event StartTokenIdChanged(uint startTokenId);
 
     constructor(address quest_) {
         quest = IQuest(quest_);
@@ -123,5 +124,6 @@ contract QuestMinter is Ownable {
 
     function setStartTokenId(uint256 _startTokenId) external onlyOwner {
         startTokenId = _startTokenId;
+        emit StartTokenIdChanged(_startTokenId);
     }
 }

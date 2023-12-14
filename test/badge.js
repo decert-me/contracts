@@ -23,6 +23,13 @@ const createParams = {
   uri: 'ipfs://123' // quest URI
 }
 
+const updateParams = {
+  startTs: 0,
+  endTs: 2681807920,
+  title: 'title',
+  uri: 'ipfs://123' // quest URI
+}
+
 const badgeParams = {
   'questId': 10000,
   'score': 100000,
@@ -92,6 +99,121 @@ describe("Badge", async () => {
     it("not owner should revert", async () => {
       let addr = accounts[1].address;
       await expect(badgeContract.connect(accounts[2]).setMinter(addr, false)).to.be.revertedWith('Ownable: caller is not the owner');
+    });
+  });
+
+  describe('updateQuest()', async () => {
+    let sender;
+    let minter;
+    before(async () => {
+      sender = accounts[2];
+      minter = accounts[1];
+    });
+
+    it('should revert "OnlyMinter"', async () => {
+      let { questId, score, uri } = badgeParams;
+      await badgeContract.connect(minter).initQuest(questId, createParams);
+      let { startTs, endTs, title, uri: questUri } = updateParams;
+      await expect(
+        badgeContract.connect(sender).updateQuest(questId, startTs, endTs, title, questUri)
+      ).to.revertedWithCustomError(badgeContract, 'OnlyMinter');
+    });
+
+    it('should revert "NonexistentQuest"', async () => {
+      let { questId, score, uri } = badgeParams;
+      await expect(
+        badgeContract.connect(minter).updateQuest(questId, 0, 0, '', '')
+      ).to.revertedWithCustomError(badgeContract, 'NonexistentQuest');
+    });
+
+    it('should updateQuest success', async () => {
+      let { questId, score, uri } = badgeParams;
+      await badgeContract.connect(minter).initQuest(questId, createParams);
+      let { startTs, endTs, title, uri: questUri } = updateParams;
+      await badgeContract.connect(minter).updateQuest(questId, startTs, endTs, title, questUri);
+
+      let questsData = await badgeContract.getQuest(questId);
+      expect(questsData.startTs).to.equal(startTs);
+      expect(questsData.endTs).to.equal(endTs);
+      expect(questsData.title).to.equal(title);
+      expect(questsData.uri).to.equal(questUri);
+    });
+  });
+  describe('initQuest()', async () => {
+    let sender;
+    let minter;
+    before(async () => {
+      sender = accounts[2];
+      minter = accounts[1];
+    });
+
+    it('should initQuest success', async () => {
+      let { questId, score, uri } = badgeParams;
+      await badgeContract.connect(minter).initQuest(questId, createParams);
+      let questsData = await badgeContract.getQuest(questId);
+      expect(questsData.startTs).to.equal(createParams.startTs);
+      expect(questsData.endTs).to.equal(createParams.endTs);
+      expect(questsData.title).to.equal(createParams.title);
+      expect(questsData.uri).to.equal(createParams.uri);
+    });
+
+    it('should revert "OnlyMinter"', async () => {
+      let { questId, score, uri } = badgeParams;
+      await expect(
+        badgeContract.connect(sender).initQuest(questId, createParams)
+      ).to.revertedWithCustomError(badgeContract, 'OnlyMinter');
+    });
+
+    it('should revert "QuestIdAlreadyExists"', async () => {
+      let { questId, score, uri } = badgeParams;
+      badgeContract.connect(minter).initQuest(questId, createParams)
+      await expect(
+        badgeContract.connect(minter).initQuest(questId, createParams)
+      ).to.revertedWithCustomError(badgeContract, 'QuestIdAlreadyExists');
+    });
+
+    it('should revert "InvalidCreator"', async () => {
+      let { questId, score, uri } = badgeParams;
+      let { creator, startTs, endTs, title, uri: questUri } = createParams;
+      await expect(
+        badgeContract.connect(minter).initQuest(questId, { creator: AddressZero, startTs, endTs, title, uri: questUri })
+      ).to.revertedWithCustomError(badgeContract, 'InvalidCreator');
+    });
+  });
+  describe('claim()', async () => {
+    let sender;
+    let minter;
+    before(async () => {
+      sender = accounts[2];
+      minter = accounts[1];
+    });
+
+    it('should revert "OnlyMinter"', async () => {
+      let { questId, score, uri } = badgeParams;
+      await expect(
+        badgeContract.connect(sender).claim(sender.address, questId, uri)
+      ).to.revertedWithCustomError(badgeContract, 'OnlyMinter');
+    })
+    it('should revert "NotInTime" if now > endTs', async () => {
+      let { questId, score, uri } = badgeParams;
+      await expect(
+        badgeContract.connect(minter).claim(sender.address, questId, uri)
+      ).to.revertedWithCustomError(badgeContract, 'NotInTime');
+    })
+    it('should revert "NotInTime" if now < startTs', async () => {
+      let { questId, score, uri } = badgeParams;
+      let { endTs, title } = createParams;
+      const startTs = Math.floor(new Date().getTime() / 1000) + 30000;
+      await badgeContract.connect(minter).initQuest(questId, { creator, startTs, endTs, title, uri });
+      await expect(
+        badgeContract.connect(minter).claim(sender.address, questId, uri)
+      ).to.revertedWithCustomError(badgeContract, 'NotInTime');
+    })
+    it('should success', async () => {
+      let { questId, score, uri } = badgeParams;
+      let { startTs,endTs, title } = createParams;
+      await badgeContract.connect(minter).initQuest(questId, { creator, startTs, endTs, title, uri });
+      await badgeContract.connect(minter).claim(sender.address, questId, uri)
     });
   });
 
@@ -206,7 +328,7 @@ describe("Badge", async () => {
     it("existent quest", async () => {
       let { questId, score, uri } = badgeParams;
       const questData = await badgeContract.getQuest(questId);
-      const { startTs, endTs, title, uri:questUri } = questData;
+      const { startTs, endTs, title, uri: questUri } = questData;
       expect(startTs).to.equal(createParams.startTs);
       expect(endTs).to.equal(createParams.endTs);
       expect(title).to.equal(createParams.title);
@@ -252,7 +374,7 @@ describe("Badge", async () => {
     it("totalSupply should plus", async () => {
       let { questId, score, uri } = badgeParams;
       await badgeContract.connect(minter).claimWithInit(createParams, questId, sender.address, uri);
-      
+
       const totalSupply = await badgeContract.totalSupply();
       expect(totalSupply).to.equal(1);
     });

@@ -15,6 +15,7 @@ contract Badge is IBadge, SBTBase, Ownable {
     error InvalidMinter();
     error OnlyMinter();
     error QuestIdAlreadyExists();
+    error InvalidCreator();
 
     using ECDSA for bytes32;
 
@@ -86,8 +87,6 @@ contract Badge is IBadge, SBTBase, Ownable {
         address to,
         string memory uri
     ) external onlyMinter {
-        if (_questBadgeNum[questId] != 0) revert QuestIdAlreadyExists();
-
         _initQuest(questId, questData);
         _claim(to, questId, uri);
     }
@@ -96,8 +95,6 @@ contract Badge is IBadge, SBTBase, Ownable {
         uint256 questId,
         QuestData calldata questData
     ) external onlyMinter {
-        if (_questBadgeNum[questId] != 0) revert QuestIdAlreadyExists();
-
         _initQuest(questId, questData);
     }
 
@@ -113,7 +110,7 @@ contract Badge is IBadge, SBTBase, Ownable {
         string memory title,
         string memory questUri
     ) external onlyMinter {
-        if (_questBadgeNum[questId] == 0) revert NonexistentQuest();
+        if (quests[questId].creator == address(0)) revert NonexistentQuest();
 
         QuestData storage quest = quests[questId];
         quest.startTs = startTs;
@@ -125,7 +122,8 @@ contract Badge is IBadge, SBTBase, Ownable {
     }
 
     function _initQuest(uint256 questId, QuestData memory quest) internal {
-        if (quests[questId].creator!=address(0)) revert QuestIdAlreadyExists();
+        if (quest.creator == address(0)) revert InvalidCreator();
+        if (quests[questId].creator != address(0)) revert QuestIdAlreadyExists();
         quests[questId] = quest;
 
         emit QuestInit(questId, quest);
