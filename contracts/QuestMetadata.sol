@@ -30,8 +30,7 @@ contract QuestMetadata is IMetadata {
 
         bytes memory dataURI = abi.encodePacked(
             "{",
-            '"name": "DecertQuest #',
-            Strings.toString(tokenId),
+            '"name": "DecertQuest',
             '",',
             '"description": "",',
             '"image": "',
