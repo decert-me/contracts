@@ -6,20 +6,14 @@ async function main() {
     let contractName = 'QuestMetadata';
     const contractFactory = await ethers.getContractFactory(contractName);
 
-    const BadgeAddr = (require(`../deployments/${network.name}/Badge.json`)).address;
     const QuestAddr = (require(`../deployments/${network.name}/Quest.json`)).address;
-
-    if (!BadgeAddr) {
-        console.error('plaease deploy Badge contract first');
-        return;
-    }
 
     if (!QuestAddr) {
         console.error('plaease deploy Quest contract first');
         return;
     }
     
-    const contract = await contractFactory.deploy(BadgeAddr,QuestAddr);
+    const contract = await contractFactory.deploy(QuestAddr);
     await contract.deployed();
 
     console.log(`[${contractName}] contract deployed to:`, contract.address);
@@ -27,7 +21,7 @@ async function main() {
 
 
     if (!['hardhat', 'localhost'].includes(network.name)) {
-        console.log(`[${contractName}] Please verify contract : npx hardhat verify ${contract.address} --network ${network.name} '${BadgeAddr}' '${QuestAddr}'`);
+        console.log(`[${contractName}] Please verify contract : npx hardhat verify ${contract.address} --network ${network.name} '${QuestAddr}'`);
     }
 }
 

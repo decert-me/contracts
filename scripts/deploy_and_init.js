@@ -53,7 +53,7 @@ async function main() {
         const badgeAddr = badgeInstance.address;
         const questAddr = questInstance.address;
 
-        questMetadataInstance = await QuestMetadata.deploy(badgeAddr, questAddr);
+        questMetadataInstance = await QuestMetadata.deploy(questAddr);
         await questMetadataInstance.deployed();
         console.log('\nQuestMetadata contract deployed to:', questMetadataInstance.address);
     }
@@ -68,8 +68,6 @@ async function main() {
 
         await questInstance.connect(owner).setMetaContract(questMetadataInstance.address);
         console.log('\nQuest setMetaContract', questMetadataInstance.address);
-
-        await questMinterInstance.connect(owner).setStartTokenId(20000);
     }
 
     {
@@ -89,7 +87,7 @@ async function main() {
             console.log(`\nPlease verify contract address [Quest]:\n npx hardhat verify ${questInstance.address} --network ${network.name}`);
             console.log(`\nPlease verify contract address [BadgeMinter]:\n npx hardhat verify ${badgeMinterInstance.address} "${badgeInstance.address}" --network ${network.name}`);
             console.log(`\nPlease verify contract address [QuestMinter]:\n npx hardhat verify ${questMinterInstance.address} "${questInstance.address}" --network ${network.name}`);
-            console.log(`\nPlease verify contract address [QuestMetadata]:\n npx hardhat verify ${questMetadataInstance.address} "${badgeInstance.address}" "${questInstance.address}" --network ${network.name}`);
+            console.log(`\nPlease verify contract address [QuestMetadata]:\n npx hardhat verify ${questMetadataInstance.address} "${questInstance.address}" --network ${network.name}`);
         }
     }
 }
