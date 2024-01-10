@@ -53,7 +53,6 @@ function getRandomAddress() {
 }
 
 describe('QuestMinter', async () => {
-  let badgeContract;
   let questContract;
   let questMinterContract;
   let accounts, owner;
@@ -85,30 +84,18 @@ describe('QuestMinter', async () => {
     return signature;
   }
 
-  async function genUpdateQuestBadgeNumSig(questId, badgeNum, sender, signer) {
-    const hash = ethers.utils.solidityKeccak256(['uint256', 'uint256', 'address', 'address'], [questId, badgeNum, questMinterContract.address, sender.address]);
-    const signature = await signer.signMessage(ethers.utils.arrayify(hash));
-    return signature;
-  }
-
   before(async () => {
-    const Badge = await ethers.getContractFactory('Badge');
-    badgeContract = await Badge.deploy();
-    await badgeContract.deployed();
-
     const Quest = await ethers.getContractFactory('Quest');
     questContract = await Quest.deploy();
     await questContract.deployed();
 
     const QuestMetadata = await ethers.getContractFactory("QuestMetadata");
-    questMetadataContract = await QuestMetadata.deploy(badgeContract.address, questContract.address);
+    questMetadataContract = await QuestMetadata.deploy(questContract.address);
     await questMetadataContract.deployed();
 
     const QuestMinter = await ethers.getContractFactory('QuestMinter');
     questMinterContract = await QuestMinter.deploy(questContract.address);
     await questMinterContract.deployed();
-
-    InitStartTokenId = (await questMinterContract.startTokenId()).toNumber();
 
     accounts = await ethers.getSigners();
     owner = accounts[0];
@@ -116,7 +103,6 @@ describe('QuestMinter', async () => {
 
     // set minter
     await questContract.setMinter(minter.address, true);
-    await badgeContract.setMinter(minter.address, true);
     // set meta 
     await questContract.setMetaContract(questMetadataContract.address)
 
@@ -125,10 +111,6 @@ describe('QuestMinter', async () => {
 
   afterEach(async () => {
     snapshotId = await revertBlock(snapshotId);
-  });
-
-  it('startTokenId', async () => {
-    expect(await questMinterContract.startTokenId()).to.equal(10000);
   });
 
   it('quest address', async () => {
@@ -155,7 +137,7 @@ describe('QuestMinter', async () => {
     let creator;
     let signer;
     let createQuestSig = '';
-
+    let InitStartTokenId = 0;
     before(async () => {
       signer = owner;
       creator = accounts[2];
@@ -169,56 +151,32 @@ describe('QuestMinter', async () => {
     });
 
     it('should create quest and badge', async () => {
-      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
-
-      let nextTokenId = (await questMinterContract.startTokenId()).toNumber();
-      expect(nextTokenId).to.equal(InitStartTokenId + 1);
-
+      let transaction = await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+      await transaction.wait();
+      const filter = questContract.filters.QuestCreated();
+      const events = await questContract.queryFilter(filter);
+      const tokenId = events[0].args.tokenId;
       {
         // quest
         expect(await questContract.totalSupply()).to.equal(1);
 
-        const quest = await questContract.getQuest(InitStartTokenId);
+        const quest = await questContract.getQuest(tokenId);
         expect(quest.startTs).to.equal(startTs);
         expect(quest.endTs).to.equal(endTs);
         expect(quest.title).to.equal(title);
 
-        const questOwner = await questContract.ownerOf(InitStartTokenId);
+        const questOwner = await questContract.ownerOf(tokenId);
         expect(questOwner).to.equal(creator.address);
       }
-    });
-
-    it('should pass exists TokenId', async () => {
-      let { id, to, questData, data } = mintParams;
-      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
-      await questContract.connect(owner).setMinter(owner.address, true);
-      await questContract.connect(owner).mint(to, InitStartTokenId+1, questData, data);
-      await questContract.connect(owner).mint(to, InitStartTokenId+2, questData, data);
-      await questContract.connect(owner).setMinter(minter.address, true);
-      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
-      let startTokenId = await questMinterContract.startTokenId()
-      expect(startTokenId).to.equal(InitStartTokenId + 4);
-    });
-
-    it('should emit QuestCreated event', async () => {
-      await expect(
-        questMinterContract.connect(creator).createQuest(questData, createQuestSig)
-      ).to.emit(questContract, 'QuestCreated')
-        .withArgs(creator.address, InitStartTokenId, [startTs, endTs, title, uri]);
     });
 
     it('should create two quest and badge', async () => {
       await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
       await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
 
-      let nextTokenId = (await questMinterContract.startTokenId()).toNumber();
-      expect(nextTokenId).to.equal(InitStartTokenId + 2);
-
       {
         // quest
         expect(await questContract.totalSupply()).to.equal(2);
-        expect(await questContract.ownerOf(InitStartTokenId)).to.equal(creator.address);
-        expect(await questContract.ownerOf(InitStartTokenId + 1)).to.equal(creator.address);
       }
     });
   });
@@ -235,95 +193,56 @@ describe('QuestMinter', async () => {
       creator = accounts[2];
       claimer = accounts[3];
 
-      modifyQuestSig = await genModifySig(InitStartTokenId, questDataNew, creator, signer);
+      // modifyQuestSig = await genModifySig(InitStartTokenId, questDataNew, creator, signer);
       createQuestSig = await genCreateSig(questData, creator, signer);
     })
 
     it('should revert "Invalid signer"', async () => {
-      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
-
+      let transaction = await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+      await transaction.wait();
+      const filter = questContract.filters.QuestCreated();
+      const events = await questContract.queryFilter(filter);
+      const tokenId = events[0].args.tokenId;
       await expect(
-        questMinterContract.connect(creator).modifyQuest(InitStartTokenId, questData, INVALID_SIG)
+        questMinterContract.connect(creator).modifyQuest(tokenId, questData, INVALID_SIG)
       ).to.revertedWithCustomError(questMinterContract, 'InvalidSigner');
     });
 
     it('should modify quest', async () => {
-      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+      let transaction = await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
+      await transaction.wait();
+      const filter = questContract.filters.QuestCreated();
+      const events = await questContract.queryFilter(filter);
+      const tokenId = events[0].args.tokenId;
+      modifyQuestSig = await genModifySig(tokenId, questDataNew, creator, signer);
 
-      await questMinterContract.connect(creator).modifyQuest(InitStartTokenId, questDataNew, modifyQuestSig);
+      await questMinterContract.connect(creator).modifyQuest(tokenId, questDataNew, modifyQuestSig);
 
       {
         // quest
         expect(await questContract.totalSupply()).to.equal(1);
 
-        const quest = await questContract.getQuest(InitStartTokenId);
+        const quest = await questContract.getQuest(tokenId);
         expect(quest.startTs).to.equal(startTs);
         expect(quest.endTs).to.equal(endTs);
         expect(quest.title).to.equal(title);
 
-        const questOwner = await questContract.ownerOf(InitStartTokenId);
+        const questOwner = await questContract.ownerOf(tokenId);
         expect(questOwner).to.equal(creator.address);
       }
     });
 
     it('should revert "Not creator"', async () => {
-      await questMinterContract.connect(creator).createQuest(questData, createQuestSig)
+      let transaction = await questMinterContract.connect(creator).createQuest(questData, createQuestSig)
+      await transaction.wait();
+      const filter = questContract.filters.QuestCreated();
+      const events = await questContract.queryFilter(filter);
+      const tokenId = events[0].args.tokenId;
+      modifyQuestSig = await genModifySig(tokenId, questDataNew, creator, signer);
 
       await expect(
-        questMinterContract.connect(accounts[3]).modifyQuest(InitStartTokenId, questDataNew, modifyQuestSig)
+        questMinterContract.connect(accounts[3]).modifyQuest(tokenId, questDataNew, modifyQuestSig)
       ).to.revertedWithCustomError(questMinterContract, 'NotCreator');
-    });
-  });
-  describe('updateBadgeNum()', () => {
-    const { startTs, endTs, supply, title, uri } = questDataNew;
-    let updateQuestBadgeSig = ''
-    let creator;
-    let signer;
-    let questBadgeNum = 0;
-    before(async () => {
-      signer = owner;
-      creator = accounts[2];
-      claimer = accounts[3];
-      questBadgeNum = 100;
-      createQuestSig = await genCreateSig(questData, creator, signer);
-      updateQuestBadgeSig = await genUpdateQuestBadgeNumSig(InitStartTokenId, questBadgeNum, creator, signer);
-      // questMinterContract.connect(accounts[3]).updateQuestBadgeNum(InitStartTokenId, questDataNew, modifyQuestSig);
-
-      // QuestBadgeNum = badge.questBadgeNum(InitStartTokenId);
-
-    });
-    it('should revert "Invalid signer"', async () => {
-      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
-      await expect(
-        questMinterContract.connect(creator).updateBadgeNum(InitStartTokenId, questBadgeNum, INVALID_SIG)
-      ).to.revertedWithCustomError(questMinterContract, 'InvalidSigner');
-    });
-
-    it('should revert "NonexistentToken""', async () => {
-      await expect(
-        questMinterContract.connect(creator).updateBadgeNum(InitStartTokenId, questBadgeNum, updateQuestBadgeSig)
-      ).to.revertedWithCustomError(questContract, 'NonexistentToken');
-    });
-
-    it('should updateBadgeNum success ', async () => {
-      await questMinterContract.connect(creator).createQuest(questData, createQuestSig);
-      await questMinterContract.connect(creator).updateBadgeNum(InitStartTokenId, questBadgeNum, updateQuestBadgeSig);
-      let questBadgeNumAfter = await questContract.questBadgeNum(InitStartTokenId)
-      expect(questBadgeNumAfter).to.equal(questBadgeNum);
-    });
-  });
-  describe('setStartTokenId()', () => {
-    it('should revert onlyOwner', async () => {
-      await expect(
-        questMinterContract.connect(accounts[1]).setStartTokenId(10000)
-      ).to.revertedWith(REVERT_MSGS['OnlyOwner']);
-    });
-
-    it('owner should succeed', async () => {
-      await expect(
-        questMinterContract.connect(owner).setStartTokenId(20000)
-      ).to.emit(questMinterContract, 'StartTokenIdChanged')
-        .withArgs(20000);
     });
   });
 });

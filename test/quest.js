@@ -52,16 +52,12 @@ describe("Quest", async () => {
   let minter;
   let other;
   before(async () => {
-    const Badge = await ethers.getContractFactory('Badge');
-    badgeContract = await Badge.deploy();
-    await badgeContract.deployed();
-
     const Quest = await ethers.getContractFactory("Quest");
     questContract = await Quest.deploy();
     await questContract.deployed();
 
     const QuestMetadata = await ethers.getContractFactory("QuestMetadata");
-    questMetadataContract = await QuestMetadata.deploy(badgeContract.address, questContract.address);
+    questMetadataContract = await QuestMetadata.deploy(questContract.address);
     await questMetadataContract.deployed();
 
     accounts = await ethers.getSigners();
@@ -70,7 +66,6 @@ describe("Quest", async () => {
     other = accounts[2];
     // set minter
     await questContract.setMinter(minter.address, true);
-    await badgeContract.setMinter(minter.address, true);
     // set meta 
     await questContract.setMetaContract(questMetadataContract.address)
 
@@ -122,7 +117,7 @@ describe("Quest", async () => {
     it("not minter should revert", async () => {
       let { to, id, questData, data } = mintParams;
 
-      await expect(questContract.connect(accounts[2]).mint(to, id, questData, data)).to.be.revertedWithCustomError(questContract, 'OnlyMinter');
+      await expect(questContract.connect(accounts[2]).mint(to, questData, data)).to.be.revertedWithCustomError(questContract, 'OnlyMinter');
     });
 
     it("minter mint", async () => {
@@ -130,7 +125,7 @@ describe("Quest", async () => {
 
       let beforeBalance = await questContract.balanceOf(to);
 
-      await questContract.connect(minter).mint(to, id, questData, data);
+      await questContract.connect(minter).mint(to, questData, data);
 
       let afterBalance = await questContract.balanceOf(to);
 
@@ -142,21 +137,15 @@ describe("Quest", async () => {
       let { id, to, questData, data } = mintParams;
       const { startTs, endTs, supply, title, uri } = questData;
 
-      await expect(
-        questContract.connect(minter).mint(to, id, questData, data)
-      ).to.emit(questContract, 'QuestCreated')
-        .withArgs(to, id, [startTs, endTs, title, uri]);
-
+      await questContract.connect(minter).mint(to, questData, data)
     });
 
-    it("mint twice should revert", async () => {
+    it("mint twice should success", async () => {
       let { id, to, questData, data } = mintParams;
-      await questContract.connect(minter).mint(to, id, questData, data);
+      await questContract.connect(minter).mint(to, questData, data);
 
       // mint again
-      await expect(
-        questContract.connect(minter).mint(to, id, questData, data)
-      ).to.be.revertedWith(REVERT_MSGS['AlreadyMinted']);
+      await questContract.connect(minter).mint(to, questData, data);
     });
   })
 
@@ -173,14 +162,19 @@ describe("Quest", async () => {
     });
     it("should success", async () => {
       let { to, id, questData, data } = mintParams;
-      await questContract.connect(minter).mint(to, id, questData, data);
+      let transaction = await questContract.connect(minter).mint(to, questData, data);
+      await transaction.wait();
+      const filter = questContract.filters.QuestCreated();
+      const events = await questContract.queryFilter(filter);
+      const tokenId = events[0].args.tokenId;
+
       let startTs = 100
       let endTs = 110
       let title = 'title2'
       let uri = 'uri2'
-      await questContract.connect(minter).modifyQuest(id, { startTs, endTs, title, uri });
+      await questContract.connect(minter).modifyQuest(tokenId, { startTs, endTs, title, uri });
 
-      let questData2 = await questContract.quests(id);
+      let questData2 = await questContract.quests(tokenId);
       expect(questData2.startTs).to.equal(startTs);
       expect(questData2.endTs).to.equal(endTs);
       expect(questData2.title).to.equal(title);
@@ -195,9 +189,13 @@ describe("Quest", async () => {
 
     it("existent quest", async () => {
       let { id, to, questData, data } = mintParams;
-      await questContract.connect(minter).mint(to, id, questData, data);
+      let transaction = await questContract.connect(minter).mint(to, questData, data);
+      await transaction.wait();
+      const filter = questContract.filters.QuestCreated();
+      const events = await questContract.queryFilter(filter);
+      const tokenId = events[0].args.tokenId;
 
-      const questData2 = await questContract.getQuest(id);
+      const questData2 = await questContract.getQuest(tokenId);
       const { startTs, endTs, title, uri } = questData2;
       expect(startTs).to.equal(questData.startTs);
       expect(endTs).to.equal(questData.endTs);
@@ -216,24 +214,14 @@ describe("Quest", async () => {
 
     it("uri", async () => {
       let { id, to, questData, data } = mintParams;
-      await questContract.connect(minter).mint(to, id, questData, data);
+      let transaction = await questContract.connect(minter).mint(to, questData, data);
+      await transaction.wait();
+      const filter = questContract.filters.QuestCreated();
+      const events = await questContract.queryFilter(filter);
+      const tokenId = events[0].args.tokenId;
 
-      const uri = await questContract.tokenURI(id);
-      expect(uri).to.be.not.null;
-    });
-    it("numOfBadge should be correct", async () => {
-      let { id, to, questData, data } = mintParams;
-      await questContract.connect(minter).mint(to, id, questData, data);
-      
-      const receiver = accounts[3];
 
-      let questBadgeNum = 1000;
-
-      await questContract.connect(minter).updateBadgeNum(id, questBadgeNum);
-
-      const numOfBadge = await questContract.getBadgeNum(id);
-      expect(numOfBadge).to.equal(questBadgeNum);
-      const uri = await questContract.tokenURI(id);
+      const uri = await questContract.tokenURI(tokenId);
       expect(uri).to.be.not.null;
     });
   })
@@ -244,10 +232,14 @@ describe("Quest", async () => {
       const receiver = accounts[3];
       const newReceiver = provider.createEmptyWallet();
 
-      await questContract.connect(minter).mint(receiver.address, id, questData, data);
+      let transaction = await questContract.connect(minter).mint(receiver.address, questData, data);
+      await transaction.wait();
+      const filter = questContract.filters.QuestCreated();
+      const events = await questContract.queryFilter(filter);
+      const tokenId = events[0].args.tokenId;
 
       await expect(
-        questContract.connect(receiver).transferFrom(receiver.address, newReceiver.address, id)
+        questContract.connect(receiver).transferFrom(receiver.address, newReceiver.address, tokenId)
       ).to.be.revertedWith(REVERT_MSGS['SBTNonTransferable']);
     });
 
@@ -256,10 +248,14 @@ describe("Quest", async () => {
       const receiver = accounts[3];
       const newReceiver = provider.createEmptyWallet();
 
-      await questContract.connect(minter).mint(receiver.address, id, questData, data);
+      let transaction = await questContract.connect(minter).mint(receiver.address, questData, data);
+      await transaction.wait();
+      const filter = questContract.filters.QuestCreated();
+      const events = await questContract.queryFilter(filter);
+      const tokenId = events[0].args.tokenId;
 
       await expect(
-        questContract.connect(receiver).approve(receiver.address, id)
+        questContract.connect(receiver).approve(receiver.address, tokenId)
       ).to.be.revertedWith(REVERT_MSGS['SBTNonApprovable']);
     });
 
@@ -268,9 +264,13 @@ describe("Quest", async () => {
       const receiver = accounts[3];
       const newReceiver = provider.createEmptyWallet();
 
-      await questContract.connect(minter).mint(receiver.address, id, questData, data);
+      let transaction = await questContract.connect(minter).mint(receiver.address, questData, data);
+      await transaction.wait();
+      const filter = questContract.filters.QuestCreated();
+      const events = await questContract.queryFilter(filter);
+      const tokenId = events[0].args.tokenId;
 
-      let address = await questContract.connect(receiver).getApproved(id);
+      let address = await questContract.connect(receiver).getApproved(tokenId);
       expect(address).to.equal('0x0000000000000000000000000000000000000000');
     });
   })
@@ -297,68 +297,22 @@ describe("Quest", async () => {
       expect(await questContract.meta()).to.equal(questContract.address);
     });
   });
-  describe('updateBadgeNum()', () => {
-    let questBadgeNum = 1000;
 
-    it('should revert "onlyMinter""', async () => {
-      let { id, to, questData, data } = mintParams;
-      const receiver = accounts[3];
-      const newReceiver = provider.createEmptyWallet();
-
-      await questContract.connect(minter).mint(receiver.address, id, questData, data);
-
-      await expect(
-        questContract.connect(other).updateBadgeNum(100, questBadgeNum)
-      ).to.revertedWithCustomError(questContract, 'OnlyMinter');
-    });
-
-    it('should revert "NonexistentToken""', async () => {
-      await expect(
-        questContract.connect(minter).updateBadgeNum(100, questBadgeNum)
-      ).to.revertedWithCustomError(questContract, 'NonexistentToken');
-    });
-
-    it('should updateBadgeNum success ', async () => {
-      let { id, to, questData, data } = mintParams;
-      const receiver = accounts[3];
-      const newReceiver = provider.createEmptyWallet();
-
-      await questContract.connect(minter).mint(receiver.address, id, questData, data);
-
-      await questContract.connect(minter).updateBadgeNum(id, questBadgeNum);
-      let questBadgeNumAfter = await questContract.questBadgeNum(id)
-      expect(questBadgeNumAfter).to.equal(questBadgeNum);
-    });
-  });
   describe('donate()', () => {
     it("should emit Donation event", async () => {
       let { id, to, questData, data } = mintParams;
       const { startTs, endTs, supply, title, uri } = questData;
 
-      await questContract.connect(minter).mint(to, id, questData, data)
+      let transaction =  await questContract.connect(minter).mint(to, questData, data)
+      await transaction.wait();
+      const filter = questContract.filters.QuestCreated();
+      const events = await questContract.queryFilter(filter);
+      const tokenId = events[0].args.tokenId;
 
       await expect(
-        questContract.connect(minter).donate(id, { value: OneEther })
+        questContract.connect(minter).donate(tokenId, { value: OneEther })
       ).to.emit(questContract, 'Donation')
         .withArgs(minter.address, to, OneEther);
     });
   });
-
-  describe('getBadgeNum()', async () => {
-    it("None existent quest should revert", async () => {
-      await expect(questContract.getBadgeNum(1)).to.be.revertedWithCustomError(questContract, 'NonexistentToken');
-    });
-
-    it("existent quest", async () => {
-      let { id, to, questData, data } = mintParams;
-      await questContract.connect(minter).mint(to, id, questData, data);
-
-      let badgeNum = 100;
-      await questContract.connect(minter).updateBadgeNum(id, badgeNum);
-
-      const badgeNum2 = await questContract.getBadgeNum(id);
-
-      expect(badgeNum2).to.equal(badgeNum);
-    });
-  })
 });
