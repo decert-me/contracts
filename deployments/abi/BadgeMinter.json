@@ -12,14 +12,11 @@
   "function airdropBadge(uint256[],address[],string[],bytes)",
   "function badge() view returns (address)",
   "function claim(address,uint256,string,bytes) payable",
-  "function claimWithInit(tuple(address,uint32,uint32,string,string),uint256,address,string,bytes) payable",
-  "function initQuest(uint256,tuple(address,uint32,uint32,string,string),bytes)",
   "function owner() view returns (address)",
   "function renounceOwnership()",
   "function setSigner(address)",
   "function signer() view returns (address)",
   "function startTokenId() view returns (uint256)",
   "function transferOwnership(address)",
-  "function updateQuest(uint256,uint32,uint32,string,string,bytes)",
   "function updateURI(uint256,string,bytes)"
 ]

@@ -5,11 +5,7 @@
   "function approve(address,uint256)",
   "function balanceOf(address) view returns (uint256)",
   "function claim(address,uint256,string)",
-  "function claimWithInit(tuple(address,uint32,uint32,string,string),uint256,address,string)",
   "function getApproved(uint256) view returns (address)",
-  "function getBadgeNum(uint256) view returns (uint256)",
-  "function getQuest(uint256) view returns (tuple(address,uint32,uint32,string,string))",
-  "function initQuest(uint256,tuple(address,uint32,uint32,string,string))",
   "function isApprovedForAll(address,address) view returns (bool)",
   "function ownerOf(uint256) view returns (address)",
   "function safeTransferFrom(address,address,uint256)",
@@ -19,6 +15,5 @@
   "function supportsInterface(bytes4) view returns (bool)",
   "function totalSupply() view returns (uint256)",
   "function transferFrom(address,address,uint256)",
-  "function updateQuest(uint256,uint32,uint32,string,string)",
   "function updateURI(uint256,string)"
 ]
