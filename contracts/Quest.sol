@@ -21,7 +21,6 @@ contract Quest is IQuest, SBTBase, Ownable {
 
     mapping(address => bool) public minters;
     mapping(uint256 => QuestData) public quests;
-    mapping(uint256 => uint256) public questBadgeNum;
 
     event MinterSet(address minter, bool enabled);
     event QuestCreated(
@@ -58,10 +57,21 @@ contract Quest is IQuest, SBTBase, Ownable {
 
     function mint(
         address to,
-        uint256 tokenId,
         QuestData calldata questData,
         bytes memory data
     ) external override onlyMinter {
+        uint256 tokenId = uint256(
+            keccak256(
+                abi.encodePacked(
+                    block.chainid,
+                    address(this),
+                    to,
+                    block.number,
+                    totalSupply
+                )
+            )
+        );
+        
         _mint(to, tokenId);
         totalSupply += 1;
 
@@ -85,22 +95,6 @@ contract Quest is IQuest, SBTBase, Ownable {
         if (!_exists(tokenId)) revert NonexistentToken();
 
         return quests[tokenId];
-    }
-
-    function updateBadgeNum(
-        uint256 questId,
-        uint256 badgeNum
-    ) external onlyMinter {
-        if (!_exists(questId)) revert NonexistentToken();
-
-        questBadgeNum[questId] = badgeNum;
-        emit BadgeNumUpdated(questId, badgeNum);
-    }
-
-    function getBadgeNum(uint256 questId) external view returns (uint256) {
-        if (!_exists(questId)) revert NonexistentToken();
-
-        return questBadgeNum[questId];
     }
 
     function setMetaContract(address _meta) external onlyOwner {

@@ -14,17 +14,13 @@ contract QuestMinter is Ownable {
 
     IQuest public quest;
 
-    uint256 public startTokenId;
     address public signer;
 
     event SignerChanged(address signer);
-    event StartTokenIdChanged(uint startTokenId);
 
     constructor(address quest_) {
         quest = IQuest(quest_);
         signer = msg.sender;
-
-        startTokenId = 10000;
     }
 
     function setSigner(address signer_) external onlyOwner {
@@ -53,13 +49,7 @@ contract QuestMinter is Ownable {
         );
         if (!_verify(hash, signature)) revert InvalidSigner();
 
-        while (quest.exists(startTokenId)) {
-            startTokenId += 1;
-        }
-
-        quest.mint(msg.sender, startTokenId, questData, "0x");
-
-        startTokenId += 1;
+        quest.mint(msg.sender, questData, "0x");
     }
 
     function modifyQuest(
@@ -89,25 +79,7 @@ contract QuestMinter is Ownable {
 
         quest.modifyQuest(tokenId, questData);
     }
-
-    function updateBadgeNum(
-        uint256 questId,
-        uint256 badgeNum,
-        bytes calldata signature
-    ) external {
-        bytes32 hash = keccak256(
-            abi.encodePacked(
-                questId,
-                badgeNum,
-                address(this),
-                address(msg.sender)
-            )
-        );
-        if (!_verify(hash, signature)) revert InvalidSigner();
-
-        quest.updateBadgeNum(questId, badgeNum);
-    }
-
+    
     function _verify(
         bytes32 hash,
         bytes calldata signature
@@ -120,10 +92,5 @@ contract QuestMinter is Ownable {
         bytes calldata signature
     ) internal pure returns (address) {
         return msgHash.toEthSignedMessageHash().recover(signature);
-    }
-
-    function setStartTokenId(uint256 _startTokenId) external onlyOwner {
-        startTokenId = _startTokenId;
-        emit StartTokenIdChanged(_startTokenId);
     }
 }

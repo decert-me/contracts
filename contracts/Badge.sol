@@ -20,16 +20,12 @@ contract Badge is IBadge, SBTBase, Ownable {
     using ECDSA for bytes32;
 
     mapping(address => bool) public minters;
-    mapping(uint256 => uint256) public badgeToQuest;
-    mapping(uint256 => uint256) _questBadgeNum;
-    mapping(address => mapping(uint256 => uint256)) public addrToQuestToBadge;
-    mapping(uint256 => QuestData) quests;
+    mapping(uint256 => uint256) public questBadgeNum;
     mapping(uint256 => string) private _tokenURIs;
-    uint256 _totalSupply = 0;
+    mapping(address => mapping(uint256 => bool)) public addrHoldQuestBadge;
+    uint256 public totalSupply;
 
     event MinterSet(address minter, bool enabled);
-    event QuestInit(uint256 indexed questId, QuestData questData);
-    event QuestUpdated(uint256 indexed questId, QuestData questData);
     event Claimed(uint256 indexed tokenId, uint256 questId, address receiver);
     event Donation(address from, address to, uint256 amount);
     event URIUpdated(uint indexed tokenId, string uri);
@@ -54,22 +50,25 @@ contract Badge is IBadge, SBTBase, Ownable {
     }
 
     function _claim(address to, uint256 questId, string memory uri) internal {
-        if (addrToQuestToBadge[to][questId] != 0) revert AlreadyHoldsBadge();
+        if (addrHoldQuestBadge[to][questId] == true) revert AlreadyHoldsBadge();
 
-        QuestData memory questData = quests[questId];
-        if (
-            block.timestamp < questData.startTs ||
-            block.timestamp > questData.endTs
-        ) {
-            revert NotInTime();
-        }
-
-        uint256 tokenId = ++_totalSupply;
+        uint256 tokenId = uint256(
+            keccak256(
+                abi.encodePacked(
+                    block.chainid,
+                    address(this),
+                    to,
+                    block.number,
+                    totalSupply
+                )
+            )
+        );
         _mint(to, tokenId);
         _setTokenURI(tokenId, uri);
-        badgeToQuest[tokenId] = questId;
-        _questBadgeNum[questId]++;
-        addrToQuestToBadge[to][questId] = tokenId;
+        totalSupply += 1;
+        questBadgeNum[questId]++;
+        addrHoldQuestBadge[to][questId] = true;
+
         emit Claimed(tokenId, questId, to);
     }
 
@@ -81,66 +80,9 @@ contract Badge is IBadge, SBTBase, Ownable {
         _claim(to, questId, uri);
     }
 
-    function claimWithInit(
-        QuestData calldata questData,
-        uint256 questId,
-        address to,
-        string memory uri
-    ) external onlyMinter {
-        _initQuest(questId, questData);
-        _claim(to, questId, uri);
-    }
-
-    function initQuest(
-        uint256 questId,
-        QuestData calldata questData
-    ) external onlyMinter {
-        _initQuest(questId, questData);
-    }
-
     function updateURI(uint tokenId, string memory uri) external onlyMinter {
         _setTokenURI(tokenId, uri);
         emit URIUpdated(tokenId, uri);
-    }
-
-    function updateQuest(
-        uint256 questId,
-        uint32 startTs,
-        uint32 endTs,
-        string memory title,
-        string memory questUri
-    ) external onlyMinter {
-        if (quests[questId].creator == address(0)) revert NonexistentQuest();
-
-        QuestData storage quest = quests[questId];
-        quest.startTs = startTs;
-        quest.endTs = endTs;
-        quest.title = title;
-        quest.uri = questUri;
-
-        emit QuestUpdated(questId, quest);
-    }
-
-    function _initQuest(uint256 questId, QuestData memory quest) internal {
-        if (quest.creator == address(0)) revert InvalidCreator();
-        if (quests[questId].creator != address(0)) revert QuestIdAlreadyExists();
-        quests[questId] = quest;
-
-        emit QuestInit(questId, quest);
-    }
-
-    function getQuest(
-        uint256 questId
-    ) external view returns (QuestData memory) {
-        return quests[questId];
-    }
-
-    function getBadgeNum(uint256 questId) external view returns (uint256) {
-        return _questBadgeNum[questId];
-    }
-
-    function totalSupply() public view virtual override returns (uint256) {
-        return _totalSupply;
     }
 
     function _setTokenURI(

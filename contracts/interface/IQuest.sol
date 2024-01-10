@@ -14,7 +14,6 @@ interface IQuest is IERC721 {
 
     function mint(
         address to,
-        uint256 tokenId,
         QuestData calldata questData,
         bytes memory data
     ) external;
@@ -27,10 +26,6 @@ interface IQuest is IERC721 {
         uint256 tokenId,
         QuestData calldata questData
     ) external;
-
-    function updateBadgeNum(uint256 questId, uint256 badgeNum) external;
-
-    function getBadgeNum(uint256 questId) external view returns (uint256);
 
     function exists(uint256 tokenId) external view returns (bool);
 }

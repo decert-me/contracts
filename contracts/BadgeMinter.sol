@@ -33,76 +33,6 @@ contract BadgeMinter is Ownable {
         emit SignerChanged(signer_);
     }
 
-    function claimWithInit(
-        IBadge.QuestData calldata questData,
-        uint256 questId,
-        address to,
-        string memory uri,
-        bytes calldata signature
-    ) external payable {
-        address creator = questData.creator;
-        uint32 startTs = questData.startTs;
-        uint32 endTs = questData.endTs;
-        string memory title = questData.title;
-        string memory questUri = questData.uri;
-
-        bytes32 hash = keccak256(
-            abi.encodePacked(
-                creator,
-                questId,
-                startTs,
-                endTs,
-                title,
-                questUri,
-                to,
-                uri,
-                address(this),
-                address(msg.sender)
-            )
-        );
-        if (!_verify(hash, signature)) revert InvalidSigner();
-
-        IBadge.QuestData memory quest;
-        quest.startTs = startTs;
-        quest.endTs = endTs;
-        quest.title = title;
-        quest.uri = questUri;
-        badge.claimWithInit(questData, questId, to, uri);
-
-        if (msg.value > 0) {
-            _donate(creator);
-        }
-    }
-
-    function initQuest(
-        uint256 questId,
-        IBadge.QuestData calldata questData,
-        bytes calldata signature
-    ) external {
-        address creator = questData.creator;
-        uint32 startTs = questData.startTs;
-        uint32 endTs = questData.endTs;
-        string memory title = questData.title;
-        string memory questUri = questData.uri;
-
-        bytes32 hash = keccak256(
-            abi.encodePacked(
-                creator,
-                questId,
-                startTs,
-                endTs,
-                title,
-                questUri,
-                address(this),
-                address(msg.sender)
-            )
-        );
-
-        if (!_verify(hash, signature)) revert InvalidSigner();
-
-        badge.initQuest(questId, questData);
-    }
-
     function claim(
         address to,
         uint256 questId,
@@ -121,11 +51,6 @@ contract BadgeMinter is Ownable {
         if (!_verify(hash, signature)) revert InvalidSigner();
 
         badge.claim(to, questId, uri);
-
-        if (msg.value > 0) {
-            IBadge.QuestData memory quest = badge.getQuest(questId);
-            _donate(quest.creator);
-        }
     }
 
     function updateURI(
@@ -140,30 +65,6 @@ contract BadgeMinter is Ownable {
         if (badge.ownerOf(tokenId) != msg.sender) revert NotOwner();
 
         badge.updateURI(tokenId, uri);
-    }
-
-    function updateQuest(
-        uint256 questId,
-        uint32 startTs,
-        uint32 endTs,
-        string memory title,
-        string memory questUri,
-        bytes calldata signature
-    ) external {
-        bytes32 hash = keccak256(
-            abi.encodePacked(
-                questId,
-                startTs,
-                endTs,
-                title,
-                questUri,
-                address(this),
-                address(msg.sender)
-            )
-        );
-        if (!_verify(hash, signature)) revert InvalidSigner();
-
-        badge.updateQuest(questId, startTs, endTs, title, questUri);
     }
 
     function airdropBadge(
@@ -192,13 +93,6 @@ contract BadgeMinter is Ownable {
             uint questId = questIds[i];
             string memory uri = uris[i];
 
-            IBadge.QuestData memory questData;
-            questData = badge.getQuest(questId);
-            if (
-                block.timestamp < questData.startTs ||
-                block.timestamp > questData.endTs
-            ) continue;
-
             badge.claim(receiver, questId, uri);
             emit Airdroped(questId, receiver, uri);
         }
@@ -216,10 +110,5 @@ contract BadgeMinter is Ownable {
         bytes calldata signature
     ) internal pure returns (address) {
         return msgHash.toEthSignedMessageHash().recover(signature);
-    }
-
-    function _donate(address to) internal {
-        payable(to).transfer(msg.value);
-        emit Donation(msg.sender, to, msg.value);
     }
 }
