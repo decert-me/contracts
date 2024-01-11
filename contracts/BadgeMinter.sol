@@ -41,6 +41,7 @@ contract BadgeMinter is Ownable {
     ) external payable {
         bytes32 hash = keccak256(
             abi.encodePacked(
+                block.chainid,
                 to,
                 questId,
                 uri,
@@ -75,7 +76,7 @@ contract BadgeMinter is Ownable {
     ) external {
         bytes32 hash = keccak256(
             abi.encodePacked(
-                "airdropBadge",
+                block.chainid,
                 questIds,
                 receivers,
                 address(this),

@@ -45,25 +45,6 @@ describe("Badge", async () => {
   let updateScoreSig = '';
   let snapshotId;
 
-  async function genClaimWithCreateSig(createParams, questId, to, uri, sender, signer) {
-    let { creator, startTs, endTs, title, uri: questUri } = createParams;
-    // console.log(creator, questId, startTs, endTs, title, questUri, to, uri, badgeMinterContract.address, sender.address)
-    const types = ['address', 'uint256', 'uint32', 'uint32', 'string', 'string', 'address', 'string', 'address', 'address'];
-    const params = [creator, questId, startTs, endTs, title, questUri, to, uri, badgeMinterContract.address, sender.address];
-
-    const hash = ethers.utils.solidityKeccak256(types, params);
-    const signature = await signer.signMessage(ethers.utils.arrayify(hash));
-    return signature;
-  }
-
-  async function genClaimWithScoreSig(to, questId, uri, sender, signer) {
-    const types = ['address', 'uint256', 'string', 'address', 'address'];
-    const params = [to, questId, uri, badgeMinterContract.address, sender.address];
-    const hash = ethers.utils.solidityKeccak256(types, params);
-    const signature = await signer.signMessage(ethers.utils.arrayify(hash));
-    return signature;
-  }
-
   async function genUpdateURISig(tokenId, uri, sender, signer) {
     const types = ['uint256', 'string', 'address', 'address'];
     const params = [tokenId, uri, badgeMinterContract.address, sender.address];
@@ -72,20 +53,11 @@ describe("Badge", async () => {
     return signature;
   }
 
-  async function genUpdateQuestSig(questId, updateParams, sender, signer) {
-    let { startTs, endTs, title, uri: questUri } = updateParams;
-    const types = ['uint256', 'uint32', 'uint32', 'string', 'string', 'address', 'address'];
-    const params = [questId, startTs, endTs, title, questUri, badgeMinterContract.address, sender.address];
-    const hash = ethers.utils.solidityKeccak256(types, params);
-    const signature = await signer.signMessage(ethers.utils.arrayify(hash));
-    return signature;
-  }
-
-
   async function genAirdropBadgeSig(params, sender, signer) {
     const { questsId, receivers } = params;
+    const chainId = await ethers.provider.send('eth_chainId');
 
-    const hash = ethers.utils.solidityKeccak256(['string', 'uint256[]', 'address[]', 'address', 'address'], ['airdropBadge', questsId, receivers, badgeMinterContract.address, sender.address]);
+    const hash = ethers.utils.solidityKeccak256(['uint256', 'uint256[]', 'address[]', 'address', 'address'], [chainId, questsId, receivers, badgeMinterContract.address, sender.address]);
 
     const signature = await signer.signMessage(ethers.utils.arrayify(hash));
     return signature;
@@ -93,7 +65,8 @@ describe("Badge", async () => {
 
   async function genClaimSig(params, sender, signer) {
     const { to, questsId, uri } = params;
-    const hash = ethers.utils.solidityKeccak256(['address', 'uint256', 'string', 'address', 'address'], [to, questsId, uri, badgeMinterContract.address, sender.address]);
+    const chainId = await ethers.provider.send('eth_chainId');
+    const hash = ethers.utils.solidityKeccak256(['uint256', 'address', 'uint256', 'string', 'address', 'address'], [chainId, to, questsId, uri, badgeMinterContract.address, sender.address]);
 
     const signature = await signer.signMessage(ethers.utils.arrayify(hash));
     return signature;

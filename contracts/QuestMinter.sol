@@ -39,6 +39,7 @@ contract QuestMinter is Ownable {
 
         bytes32 hash = keccak256(
             abi.encodePacked(
+                block.chainid,
                 startTs,
                 endTs,
                 title,
@@ -79,7 +80,7 @@ contract QuestMinter is Ownable {
 
         quest.modifyQuest(tokenId, questData);
     }
-    
+
     function _verify(
         bytes32 hash,
         bytes calldata signature

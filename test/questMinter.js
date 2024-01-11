@@ -3,7 +3,6 @@ const { use, expect } = require('chai');
 const { solidity, MockProvider } = require('ethereum-waffle');
 use(solidity);
 
-
 const provider = new MockProvider();
 
 const REVERT_MSGS = {
@@ -65,9 +64,11 @@ describe('QuestMinter', async () => {
 
 
   async function genCreateSig(questData, sender, signer) {
-    const types = ['uint32', 'uint32', 'string', 'string', 'address', 'address'];
+    const types = ['uint256','uint32', 'uint32', 'string', 'string', 'address', 'address'];
     const { startTs, endTs, title, uri } = questData;
-    const params = [startTs, endTs, title, uri, questMinterContract.address, sender.address];
+    const chainId = await ethers.provider.send('eth_chainId');
+
+    const params = [chainId,startTs, endTs, title, uri, questMinterContract.address, sender.address];
 
     const hash = ethers.utils.solidityKeccak256(types, params);
     const signature = await signer.signMessage(ethers.utils.arrayify(hash));
