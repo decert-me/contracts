@@ -63,6 +63,7 @@ contract Quest is IQuest, SBTBase, Ownable {
         uint256 tokenId = uint256(
             keccak256(
                 abi.encodePacked(
+                    block.chainid,
                     address(this),
                     to,
                     block.number,
