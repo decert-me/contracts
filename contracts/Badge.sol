@@ -20,7 +20,7 @@ contract Badge is IBadge, SBTBase, Ownable {
     using ECDSA for bytes32;
 
     mapping(address => bool) public minters;
-    mapping(uint256 => uint256) public questBadgeNum;
+    mapping(uint256 => uint256) public questBadgeNum; // TODO: rename: questToBadgeNum
     mapping(uint256 => string) private _tokenURIs;
     mapping(address => mapping(uint256 => bool)) public addrHoldQuestBadge;
     uint256 public totalSupply;
@@ -71,7 +71,7 @@ contract Badge is IBadge, SBTBase, Ownable {
     }
 
     function _claim(address to, uint256 questId, string memory uri) internal {
-        if (addrHoldQuestBadge[to][questId] == true) revert AlreadyHoldsBadge();
+        if (addrHoldQuestBadge[to][questId] == true) revert AlreadyHoldsBadge(); //TODO: 布尔值可以直接比较
 
         uint256 tokenId = uint256(
             keccak256(
