@@ -9,7 +9,7 @@ import "./interface/IMetadata.sol";
 contract QuestMetadata is IMetadata {
     error NonexistentTokenUri();
 
-    IQuest public quest; // TODO: immutable
+    IQuest immutable quest;
 
     constructor(address quests_) {
         quest = IQuest(quests_);

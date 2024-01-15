@@ -114,10 +114,6 @@ describe('QuestMinter', async () => {
     snapshotId = await revertBlock(snapshotId);
   });
 
-  it('quest address', async () => {
-    expect(await questMinterContract.quest()).to.equal(questContract.address);
-  });
-
   describe('setSigner()', () => {
     it('should revert onlyOwner', async () => {
       await expect(

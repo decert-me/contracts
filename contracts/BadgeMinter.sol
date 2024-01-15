@@ -14,9 +14,8 @@ contract BadgeMinter is Ownable {
 
     using ECDSA for bytes32;
 
-    IBadge public badge; // TODO: immutable
+    IBadge immutable badge;
 
-    uint256 public startTokenId; //TODO: delete
     address public signer;
 
     event SignerChanged(address signer);

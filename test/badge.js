@@ -11,6 +11,11 @@ async function revertBlock(snapshotId) {
   const newSnapshotId = await ethers.provider.send("evm_snapshot");
   return newSnapshotId;
 }
+const REVERT_MSGS = {
+  'AlreadyMinted': 'ERC721: token already minted',
+  'SBTNonTransferable': 'SBT:non-transferable',
+  'SBTNonApprovable': 'SBT:non-approvable',
+}
 
 const AddressZero = ethers.constants.AddressZero;
 
@@ -211,6 +216,55 @@ describe("Badge", async () => {
 
       const tokenURI = await badgeContract.tokenURI(tokenId);
       expect(tokenURI).to.equal(uri);
+    });
+  })
+
+  describe('SBT', async () => {
+    it("transferFrom non-transferable", async () => {
+      const receiver = accounts[3];
+      const newReceiver = provider.createEmptyWallet();
+
+      let { questId, score, uri } = badgeParams;
+      let transaction = await badgeContract.connect(minter).claim(receiver.address, questId,  uri)
+      await transaction.wait();
+      const filter = badgeContract.filters.Claimed();
+      const events = await badgeContract.queryFilter(filter);
+      const tokenId = events[0].args.tokenId;
+
+      await expect(
+        badgeContract.connect(receiver).transferFrom(receiver.address, newReceiver.address, tokenId)
+      ).to.be.revertedWith(REVERT_MSGS['SBTNonTransferable']);
+    });
+
+    it("non-approvable", async () => {
+      const receiver = accounts[3];
+      const newReceiver = provider.createEmptyWallet();
+
+      let { questId, score, uri } = badgeParams;
+      let transaction = await badgeContract.connect(minter).claim(receiver.address, questId,  uri)
+      await transaction.wait();
+      const filter = badgeContract.filters.Claimed();
+      const events = await badgeContract.queryFilter(filter);
+      const tokenId = events[0].args.tokenId;
+
+      await expect(
+        badgeContract.connect(receiver).approve(receiver.address, tokenId)
+      ).to.be.revertedWith(REVERT_MSGS['SBTNonApprovable']);
+    });
+
+    it("get approved return zero", async () => {
+      const receiver = accounts[3];
+      const newReceiver = provider.createEmptyWallet();
+
+      let { questId, score, uri } = badgeParams;
+      let transaction = await badgeContract.connect(minter).claim(receiver.address, questId,  uri)
+      await transaction.wait();
+      const filter = badgeContract.filters.Claimed();
+      const events = await badgeContract.queryFilter(filter);
+      const tokenId = events[0].args.tokenId;
+
+      let address = await badgeContract.connect(receiver).getApproved(tokenId);
+      expect(address).to.equal('0x0000000000000000000000000000000000000000');
     });
   })
 });

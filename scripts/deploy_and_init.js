@@ -10,12 +10,13 @@ async function main() {
     const Badge = await ethers.getContractFactory('Badge');
     const Quest = await ethers.getContractFactory('Quest');
     const QuestMetadata = await ethers.getContractFactory('QuestMetadata');
-    
+
     // 部署Badge
     let badgeInstance;
     {
         badgeInstance = await Badge.deploy();
         await badgeInstance.deployed();
+        await writeAddr(badgeInstance.address, 'Badge', network.name);        // 记录地址
         console.log('\nBadge contract deployed to:', badgeInstance.address);
     }
 
@@ -24,6 +25,7 @@ async function main() {
     {
         questInstance = await Quest.deploy();
         await questInstance.deployed();
+        await writeAddr(questInstance.address, 'Quest', network.name); // 记录地址
         console.log('\nQuest contract deployed to:', questInstance.address);
     }
 
@@ -34,6 +36,7 @@ async function main() {
 
         badgeMinterInstance = await BadgeMinter.deploy(badgeAddr);
         await badgeMinterInstance.deployed();
+        await writeAddr(badgeMinterInstance.address, 'BadgeMinter', network.name);// 记录地址
         console.log('\nBadgeMinter contract deployed to:', badgeMinterInstance.address);
     }
 
@@ -44,6 +47,7 @@ async function main() {
 
         questMinterInstance = await QuestMinter.deploy(questAddr);
         await questMinterInstance.deployed();
+        await writeAddr(questMinterInstance.address, 'QuestMinter', network.name);// 记录地址
         console.log('\nQuestMinter contract deployed to:', questMinterInstance.address);
     }
 
@@ -55,6 +59,7 @@ async function main() {
 
         questMetadataInstance = await QuestMetadata.deploy(questAddr);
         await questMetadataInstance.deployed();
+        await writeAddr(questMetadataInstance.address, 'QuestMetadata', network.name);// 记录地址
         console.log('\nQuestMetadata contract deployed to:', questMetadataInstance.address);
     }
 
@@ -69,16 +74,7 @@ async function main() {
         await questInstance.connect(owner).setMetaContract(questMetadataInstance.address);
         console.log('\nQuest setMetaContract', questMetadataInstance.address);
     }
-
-    {
-        // 记录地址
-        await writeAddr(badgeInstance.address, 'Badge', network.name);
-        await writeAddr(questInstance.address, 'Quest', network.name);
-        await writeAddr(badgeMinterInstance.address, 'BadgeMinter', network.name);
-        await writeAddr(questMinterInstance.address, 'QuestMinter', network.name);
-        await writeAddr(questMetadataInstance.address, 'QuestMetadata', network.name);
-    }
-
+    
     {
 
         // 开源认证

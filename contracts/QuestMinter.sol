@@ -12,7 +12,7 @@ contract QuestMinter is Ownable {
 
     using ECDSA for bytes32;
 
-    IQuest public quest; // TODO: immutable
+    IQuest immutable quest;
 
     address public signer;
 
