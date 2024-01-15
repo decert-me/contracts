@@ -32,6 +32,13 @@ contract Badge is IBadge, SBTBase, Ownable {
 
     constructor() SBTBase("Decert Badge", "Decert") {}
 
+    modifier onlyMinter() {
+        if (!minters[msg.sender]) {
+            revert OnlyMinter();
+        }
+        _;
+    }
+
     function setMinter(
         address minter,
         bool enabled
@@ -42,11 +49,25 @@ contract Badge is IBadge, SBTBase, Ownable {
         emit MinterSet(minter, enabled);
     }
 
-    modifier onlyMinter() {
-        if (!minters[msg.sender]) {
-            revert OnlyMinter();
-        }
-        _;
+    function claim(
+        address to,
+        uint256 questId,
+        string memory uri
+    ) external onlyMinter {
+        _claim(to, questId, uri);
+    }
+
+    function updateURI(uint tokenId, string memory uri) external onlyMinter {
+        _setTokenURI(tokenId, uri);
+        emit URIUpdated(tokenId, uri);
+    }
+
+    function tokenURI(
+        uint256 tokenId
+    ) public view virtual override returns (string memory) {
+        if (!_exists(tokenId)) revert NonexistentToken();
+
+        return _tokenURIs[tokenId];
     }
 
     function _claim(address to, uint256 questId, string memory uri) internal {
@@ -72,19 +93,6 @@ contract Badge is IBadge, SBTBase, Ownable {
         emit Claimed(tokenId, questId, to);
     }
 
-    function claim(
-        address to,
-        uint256 questId,
-        string memory uri
-    ) external onlyMinter {
-        _claim(to, questId, uri);
-    }
-
-    function updateURI(uint tokenId, string memory uri) external onlyMinter {
-        _setTokenURI(tokenId, uri);
-        emit URIUpdated(tokenId, uri);
-    }
-
     function _setTokenURI(
         uint256 tokenId,
         string memory _tokenURI
@@ -92,13 +100,5 @@ contract Badge is IBadge, SBTBase, Ownable {
         if (!_exists(tokenId)) revert NonexistentToken();
 
         _tokenURIs[tokenId] = _tokenURI;
-    }
-
-    function tokenURI(
-        uint256 tokenId
-    ) public view virtual override returns (string memory) {
-        if (!_exists(tokenId)) revert NonexistentToken();
-
-        return _tokenURIs[tokenId];
     }
 }
