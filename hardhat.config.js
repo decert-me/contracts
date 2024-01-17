@@ -118,8 +118,9 @@ module.exports = {
   etherscan: {
     // Your API key for Etherscan
     apiKey: {
+      optimisticEthereum: process.env.OPTIMISM_ETHERSCAN_API_KEY,
       optimismSepolia: process.env.OPTIMISM_ETHERSCAN_API_KEY,
-      mumbai: process.env.POLYGON_ETHERSCAN_API_KEY,
+      polygon: process.env.POLYGON_ETHERSCAN_API_KEY,
       arbitrumSepolia: process.env.ARBITRUM_ETHERSCAN_API_KEY,
     },
     customChains: [
