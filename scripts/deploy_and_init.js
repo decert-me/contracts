@@ -73,8 +73,22 @@ async function main() {
 
         await questInstance.connect(owner).setMetaContract(questMetadataInstance.address);
         console.log('\nQuest setMetaContract', questMetadataInstance.address);
+
+        // 设置signer
+        {
+            const MinterSigner = process.env.MINTER_SIGNER
+            if (MinterSigner) {
+                await questMinterInstance.connect(owner).setSigner(MinterSigner);
+                console.log('\nquestMinter setSigner', MinterSigner);
+
+                await badgeMinterInstance.connect(owner).setSigner(MinterSigner);
+                console.log('\nquestMinter setSigner', MinterSigner);
+            } else {
+                console.log('\nQuestMinter use deployer as signer');
+            }
+        }
     }
-    
+
     {
 
         // 开源认证
