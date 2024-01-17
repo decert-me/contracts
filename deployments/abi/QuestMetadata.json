@@ -1,6 +1,5 @@
 [
   "constructor(address)",
   "error NonexistentTokenUri()",
-  "function quest() view returns (address)",
   "function tokenURI(uint256) view returns (string)"
 ]
