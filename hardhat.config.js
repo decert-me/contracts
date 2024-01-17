@@ -55,6 +55,21 @@ module.exports = {
         mnemonic,
       },
       chainId: 80001,
+    },
+    optimismSepolia: {
+      url: 'https://sepolia.optimism.io',
+      accounts: {
+        mnemonic,
+      },
+      gasPrice: 12000000,
+      chainId: 11155420,
+    },
+    optimism: {
+      url: 'https://mainnet.optimism.io',
+      accounts: {
+        mnemonic,
+      },
+      chainId: 10,
     }
   },
   solidity: {
