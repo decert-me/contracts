@@ -8,7 +8,6 @@ require("@nomicfoundation/hardhat-chai-matchers")
 
 const defaultNetwork = "localhost";
 const mnemonic = process.env.MNEMONIC
-const scankey = process.env.ETHERSCAN_API_KEY
 
 
 module.exports = {
@@ -70,6 +69,20 @@ module.exports = {
         mnemonic,
       },
       chainId: 10,
+    },
+    arbitrumSepolia: {
+      url: 'https://arbitrum-sepolia.blockpi.network/v1/rpc/public',
+      accounts: {
+        mnemonic,
+      },
+      chainId: 421614,
+    },
+    arbitrumOne: {
+      url: 'https://arbitrum.llamarpc.com',
+      accounts: {
+        mnemonic,
+      },
+      chainId: 42161,
     }
   },
   solidity: {
@@ -104,7 +117,29 @@ module.exports = {
   },
   etherscan: {
     // Your API key for Etherscan
-    apiKey: scankey
+    apiKey: {
+      optimismSepolia: process.env.OPTIMISM_ETHERSCAN_API_KEY,
+      mumbai: process.env.POLYGON_ETHERSCAN_API_KEY,
+      arbitrumSepolia: process.env.ARBITRUM_ETHERSCAN_API_KEY,
+    },
+    customChains: [
+      {
+        network: "optimismSepolia",
+        chainId: 11155420,
+        urls: {
+          apiURL: "https://api-sepolia-optimism.etherscan.io/api",
+          browserURL: "https://sepolia-optimism.etherscan.io"
+        }
+      },
+      {
+        network: "arbitrumSepolia",
+        chainId: 421614,
+        urls: {
+          apiURL: "https://api-sepolia.arbiscan.io/api",
+          browserURL: "https://sepolia.arbiscan.io/",
+        }
+      }
+    ]
   },
   abiExporter: {
     path: './deployments/abi',

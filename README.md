@@ -19,7 +19,7 @@ vi .env
 - MNEMONIC 助记词
     用于部署合约，需要在对应网络持有远胜币作为手续费
     eg:  = "test test test test test test test test test test test junk"
-- ETHERSCAN_API_KEY 区块链浏览器API KEY
+- x_ETHERSCAN_API_KEY 区块链浏览器API KEY
     用于开源合约，不同区块链对应不同的KEY
 - MINTER_SIGNER 交易签发者账号
     前端请求后端对数据进行签名后再调用合约发放；可不设置，默认为合约部署者
