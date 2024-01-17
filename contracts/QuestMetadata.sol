@@ -4,26 +4,21 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "base64-sol/base64.sol";
 import "./interface/IQuest.sol";
-import "./interface/IBadge.sol";
 import "./interface/IMetadata.sol";
 
 contract QuestMetadata is IMetadata {
     error NonexistentTokenUri();
 
-    IQuest public quest;
-    IBadge public badge;
+    IQuest immutable quest;
 
-    constructor(address badge_, address quests_) {
+    constructor(address quests_) {
         quest = IQuest(quests_);
-        badge = IBadge(badge_);
     }
 
     function tokenURI(
         uint256 tokenId
     ) external view override returns (string memory) {
-        if (!badge.exists(tokenId)) {
-            revert NonexistentTokenUri();
-        }
+        if (!quest.exists(tokenId)) revert NonexistentTokenUri();
 
         return generateTokenUri(tokenId);
     }
@@ -35,8 +30,7 @@ contract QuestMetadata is IMetadata {
 
         bytes memory dataURI = abi.encodePacked(
             "{",
-            '"name": "DecertQuest #',
-            Strings.toString(tokenId),
+            '"name": "DecertQuest',
             '",',
             '"description": "",',
             '"image": "',
@@ -76,7 +70,6 @@ contract QuestMetadata is IMetadata {
         IQuest.QuestData memory questData = quest.getQuest(tokenId);
         string memory title = questData.title;
         string memory uri = questData.uri;
-        uint256 tokenBalance = badge.tokenSupply(tokenId);
 
         return
             string(
@@ -90,11 +83,9 @@ contract QuestMetadata is IMetadata {
                     '<text id="title" mask="url(#mask-4)" font-family="PingFangSC-Semibold, PingFang SC" font-size="26" font-weight="500" fill="#FFFFFF"><tspan x="33" y="97">',
                     title,
                     '</tspan> </text><text id="ipfs" mask="url(#mask-4)" font-family="PingFangSC-Semibold, PingFang SC" font-size="16" font-weight="500" fill="#FFFFFF"><tspan x="33" y="142">IPFS:</tspan></text>',
-                    '<text id="challenger-title" mask="url(#mask-4)" font-family="PingFangSC-Semibold, PingFang SC" font-size="16" font-weight="500" fill="#FFFFFF"><tspan x="33" y="198">Challenger Passed</tspan></text><text id="ipfs-value" opacity="0.8" mask="url(#mask-4)" font-family="PingFangSC-Regular, PingFang SC" font-size="11" font-weight="normal" fill="#FFFFFF"><tspan x="33" y="161">',
+                    '<text id="ipfs-value" opacity="0.8" mask="url(#mask-4)" font-family="PingFangSC-Regular, PingFang SC" font-size="11" font-weight="normal" fill="#FFFFFF"><tspan x="33" y="161">',
                     uri,
-                    '</tspan></text><text id="challenger-value" opacity="0.8" mask="url(#mask-4)" font-family="PingFangSC-Regular, PingFang SC" font-size="11" font-weight="normal" fill="#FFFFFF"><tspan x="33" y="217">',
-                    Strings.toString(tokenBalance),
-                    "</tspan></text></g></svg>"
+                    '</tspan></text></g></svg>'
                 )
             );
     }

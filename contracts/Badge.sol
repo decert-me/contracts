@@ -1,32 +1,36 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "./SBTBase.sol";
 import "./interface/IBadge.sol";
 
-contract Badge is IBadge, Ownable, ERC1155 {
-    error InvalidMinter();
-    error OnlyMinter();
-    error NonTransferrableERC1155Token();
-    error NonApprovableERC1155Token();
+contract Badge is IBadge, SBTBase, Ownable {
     error AlreadyHoldsBadge();
     error NonexistentToken();
-    error TokenIdAlreadyExists();
     error NotClaimedYet();
+    error NonexistentQuest();
+    error NotInTime();
+    error InvalidMinter();
+    error OnlyMinter();
+    error QuestIdAlreadyExists();
+    error InvalidCreator();
 
-    mapping(uint256 => address) public creators;
-    mapping(uint256 => uint256) private _tokenSupply;
-    mapping(uint256 => string) customUri;
+    using ECDSA for bytes32;
+
     mapping(address => bool) public minters;
-    mapping(uint256 => mapping(address => uint256)) public scores;
+    mapping(uint256 => uint256) public questToBadgeNum;
+    mapping(uint256 => string) private _tokenURIs;
+    mapping(address => mapping(uint256 => bool)) public addrHoldQuestBadge;
+    uint256 public totalSupply;
 
-    event SetMinter(address minter, bool enabled);
+    event MinterSet(address minter, bool enabled);
+    event Claimed(uint256 indexed tokenId, uint256 questId, address receiver);
+    event Donation(address from, address to, uint256 amount);
+    event URIUpdated(uint indexed tokenId, string uri);
 
-    string public constant name = "Decert Badge";
-    string public constant symbol = "Decert";
-
-    constructor(string memory uri_) ERC1155(uri_) {}
+    constructor() SBTBase("Decert Badge", "Decert") {}
 
     modifier onlyMinter() {
         if (!minters[msg.sender]) {
@@ -35,140 +39,66 @@ contract Badge is IBadge, Ownable, ERC1155 {
         _;
     }
 
-    function setMinter(address minter, bool enabled) external onlyOwner {
-        if (minter == address(0)) {
-            revert InvalidMinter();
-        }
+    function setMinter(
+        address minter,
+        bool enabled
+    ) external override onlyOwner {
+        if (minter == address(0)) revert InvalidMinter();
+
         minters[minter] = enabled;
-        emit SetMinter(minter, enabled);
+        emit MinterSet(minter, enabled);
     }
 
-    /**
-     * @notice Block badge transfers
-     */
-    function _beforeTokenTransfer(
-        address operator,
-        address from,
+    function claim(
         address to,
-        uint256[] memory ids,
-        uint256[] memory amounts,
-        bytes memory data
-    ) internal virtual override(ERC1155) {
-        if (from != address(0) && to != address(0)) {
-            revert NonTransferrableERC1155Token();
-        }
-        super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
-    }
-
-    /**
-     * @notice Block badge approvals
-     */
-    function setApprovalForAll(address, bool) public virtual override(ERC1155) {
-        revert NonApprovableERC1155Token();
-    }
-
-    function create(
-        address creator,
-        uint256 id,
-        uint256 initialSupply,
-        string memory uri_,
-        bytes memory data
-    ) external override onlyMinter returns (uint256) {
-        return _create(creator, id, initialSupply, uri_, data);
-    }
-
-    function exists(uint256 tokenId) external view override returns (bool) {
-        return _exists(tokenId);
-    }
-
-    function tokenSupply(
-        uint256 tokenId
-    ) external view override returns (uint256) {
-        return _tokenSupply[tokenId];
-    }
-
-    function mint(
-        address to,
-        uint256 id,
-        uint256 amount,
-        bytes memory data
-    ) external override onlyMinter {
-        if (balanceOf(to, id) != 0) {
-            revert AlreadyHoldsBadge();
-        }
-        if (!_exists(id)) {
-            revert NonexistentToken();
-        }
-        
-        _mint(to, id, amount, data);
-        _tokenSupply[id] = _tokenSupply[id] + amount;
-    }
-
-    function setCustomURI(
-        uint256 id,
-        string memory newURI
-    ) external override onlyMinter {
-        if (!_exists(id)) {
-            revert NonexistentToken();
-        }
-        customUri[id] = newURI;
-        emit URI(newURI, id);
-    }
-
-    function uri(uint256 id) public view override returns (string memory) {
-        if (!_exists(id)) {
-            revert NonexistentToken();
-        }
-        // We have to convert string to bytes to check for existence
-        bytes memory customUriBytes = bytes(customUri[id]);
-        if (customUriBytes.length > 0) {
-            return customUri[id];
-        } else {
-            return super.uri(id);
-        }
-    }
-
-    function _create(
-        address creator,
-        uint256 id,
-        uint256 initialSupply,
-        string memory uri_,
-        bytes memory data
-    ) internal returns (uint256) {
-        if (_exists(id)) {
-            revert TokenIdAlreadyExists();
-        }
-        creators[id] = creator;
-
-        if (bytes(uri_).length > 0) {
-            customUri[id] = uri_;
-            emit URI(uri_, id);
-        }
-
-        _mint(creator, id, initialSupply, data);
-
-        _tokenSupply[id] = initialSupply;
-        return id;
-    }
-
-    /**
-     * @dev Returns whether the specified token exists by checking to see if it has a creator
-     * @param tokenId uint256 ID of the token to query the existence of
-     * @return bool whether the token exists
-     */
-    function _exists(uint256 tokenId) internal view returns (bool) {
-        return creators[tokenId] != address(0);
-    }
-
-    function updateScore(
-        address to,
-        uint256 tokenId,
-        uint256 score
+        uint256 questId,
+        string memory uri
     ) external onlyMinter {
-        if (balanceOf(to, tokenId) == 0){
-            revert NotClaimedYet();
-        }
+        _claim(to, questId, uri);
+    }
 
-        scores[tokenId][to] = score;
+    function updateURI(uint tokenId, string memory uri) external onlyMinter {
+        _setTokenURI(tokenId, uri);
+        emit URIUpdated(tokenId, uri);
+    }
+
+    function tokenURI(
+        uint256 tokenId
+    ) public view virtual override returns (string memory) {
+        if (!_exists(tokenId)) revert NonexistentToken();
+
+        return _tokenURIs[tokenId];
+    }
+
+    function _claim(address to, uint256 questId, string memory uri) internal {
+        if (addrHoldQuestBadge[to][questId]) revert AlreadyHoldsBadge();
+
+        uint256 tokenId = uint256(
+            keccak256(
+                abi.encodePacked(
+                    block.chainid,
+                    address(this),
+                    to,
+                    block.number,
+                    totalSupply
+                )
+            )
+        );
+        _mint(to, tokenId);
+        _setTokenURI(tokenId, uri);
+        totalSupply += 1;
+        questToBadgeNum[questId]++;
+        addrHoldQuestBadge[to][questId] = true;
+
+        emit Claimed(tokenId, questId, to);
+    }
+
+    function _setTokenURI(
+        uint256 tokenId,
+        string memory _tokenURI
+    ) internal virtual {
+        if (!_exists(tokenId)) revert NonexistentToken();
+
+        _tokenURIs[tokenId] = _tokenURI;
     }
 }

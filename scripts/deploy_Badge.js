@@ -7,7 +7,7 @@ async function main() {
   let contractName = 'Badge';
   const contractFactory = await ethers.getContractFactory(contractName);
 
-  const contract = await contractFactory.deploy('');
+  const contract = await contractFactory.deploy();
   await contract.deployed();
 
   console.log(`[${contractName}] contract deployed to:`, contract.address);

@@ -1,27 +1,13 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-interface IBadge {
-    function exists(uint256 _id) external view returns (bool);
+interface IBadge is IERC721 {
+    function setMinter(address minter, bool enabled) external;
 
-    function setCustomURI(uint256 _tokenId, string memory _newURI) external;
+    function claim(address to, uint256 questId, string memory uri) external;
 
-    function tokenSupply(uint256 _tokenId) external view returns (uint256);
+    function totalSupply() external view returns (uint256);
 
-    function create(
-        address _initialOwner,
-        uint256 _id,
-        uint256 _initialSupply,
-        string memory _uri,
-        bytes memory _data
-    ) external returns (uint256);
-
-    function mint(
-        address _to,
-        uint256 _id,
-        uint256 _quantity,
-        bytes memory _data
-    ) external;
-
-    function updateScore(address _to, uint256 _tokenId, uint256 _score) external;
+    function updateURI(uint tokenId, string memory uri) external;
 }

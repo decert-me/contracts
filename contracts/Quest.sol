@@ -16,34 +16,36 @@ contract Quest is IQuest, SBTBase, Ownable {
     error ClaimedCannotModify();
     error ZeroAddress();
 
-    IBadge public badge;
-
     uint256 public totalSupply;
     address public meta;
 
     mapping(address => bool) public minters;
     mapping(uint256 => QuestData) public quests;
 
-    event SetMinter(address minter, bool enabled);
+    event MinterSet(address minter, bool enabled);
     event QuestCreated(
         address indexed creator,
         uint256 indexed tokenId,
         QuestData questData
     );
+    event BadgeNumUpdated(uint256 indexed questId, uint256 badgeNum);
+    event QuestModified(
+        address indexed creator,
+        uint256 indexed tokenId,
+        QuestData questData
+    );
+    event Donation(address from, address to, uint256 amount);
 
-    constructor(address badge_) SBTBase("Decert Quest", "DQuest") {
-        badge = IBadge(badge_);
-    }
+    constructor() SBTBase("Decert Quest", "DQuest") {}
 
     function setMinter(
         address minter,
         bool enabled
     ) external override onlyOwner {
-        if (minter == address(0)) {
-            revert InvalidMinter();
-        }
+        if (minter == address(0)) revert InvalidMinter();
+
         minters[minter] = enabled;
-        emit SetMinter(minter, enabled);
+        emit MinterSet(minter, enabled);
     }
 
     modifier onlyMinter() {
@@ -55,14 +57,21 @@ contract Quest is IQuest, SBTBase, Ownable {
 
     function mint(
         address to,
-        uint256 tokenId,
         QuestData calldata questData,
         bytes memory data
     ) external override onlyMinter {
-        if (!badge.exists(tokenId)) {
-            revert NonexistentToken();
-        }
-
+        uint256 tokenId = uint256(
+            keccak256(
+                abi.encodePacked(
+                    block.chainid,
+                    address(this),
+                    to,
+                    block.number,
+                    totalSupply
+                )
+            )
+        );
+        
         _mint(to, tokenId);
         totalSupply += 1;
 
@@ -74,35 +83,23 @@ contract Quest is IQuest, SBTBase, Ownable {
         uint256 tokenId,
         QuestData calldata questData
     ) external onlyMinter {
-        if (badge.tokenSupply(tokenId) != 0) {
-            revert ClaimedCannotModify();
-        }
+        if (!_exists(tokenId)) revert NonexistentToken();
 
         quests[tokenId] = questData;
+        emit QuestModified(msg.sender, tokenId, questData);
     }
 
     function getQuest(
         uint256 tokenId
     ) external view returns (QuestData memory questData) {
+        if (!_exists(tokenId)) revert NonexistentToken();
+
         return quests[tokenId];
     }
 
-    function updateURI(
-        uint256 tokenId,
-        string calldata uri
-    ) external onlyMinter {
-        if (!_exists(tokenId)) {
-            revert NonexistentToken();
-        }
-
-        QuestData storage questData = quests[tokenId];
-        questData.uri = uri;
-    }
-
     function setMetaContract(address _meta) external onlyOwner {
-        if (_meta == address(0)){
-            revert ZeroAddress();
-        }
+        if (_meta == address(0)) revert ZeroAddress();
+
         meta = _meta;
     }
 
@@ -110,5 +107,16 @@ contract Quest is IQuest, SBTBase, Ownable {
         uint256 tokenId
     ) public view virtual override returns (string memory) {
         return IMetadata(meta).tokenURI(tokenId);
+    }
+
+    function exists(uint256 tokenId) external view returns (bool) {
+        return _exists(tokenId);
+    }
+
+    function donate(uint256 questId) external payable {
+        address creator = ownerOf(questId);
+
+        payable(creator).transfer(msg.value);
+        emit Donation(msg.sender, creator, msg.value);
     }
 }

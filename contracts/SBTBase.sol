@@ -11,12 +11,7 @@ import "./interface/IERC5192.sol";
 /**
  * @dev Implementation of Soulbound Token[SBT]: Non-tranable Token
  */
-contract SBTBase is
-    ERC165,
-    IERC721,
-    IERC721Metadata,
-    IERC5192
-{
+contract SBTBase is ERC165, IERC721, IERC721Metadata, IERC5192 {
     // Token name
     string private _name;
 
@@ -37,13 +32,9 @@ contract SBTBase is
     /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        virtual
-        override(ERC165, IERC165)
-        returns (bool)
-    {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override(ERC165, IERC165) returns (bool) {
         return
             interfaceId == type(IERC721).interfaceId ||
             interfaceId == type(IERC721Metadata).interfaceId ||
@@ -54,13 +45,9 @@ contract SBTBase is
     /**
      * @dev See {IERC721-balanceOf}.
      */
-    function balanceOf(address owner)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function balanceOf(
+        address owner
+    ) public view virtual override returns (uint256) {
         require(
             owner != address(0),
             "ERC721: address zero is not a valid owner"
@@ -71,13 +58,9 @@ contract SBTBase is
     /**
      * @dev See {IERC721-ownerOf}.
      */
-    function ownerOf(uint256 tokenId)
-        public
-        view
-        virtual
-        override
-        returns (address)
-    {
+    function ownerOf(
+        uint256 tokenId
+    ) public view virtual override returns (address) {
         address owner = _owners[tokenId];
         require(owner != address(0), "ERC721: invalid token ID");
         return owner;
@@ -100,13 +83,9 @@ contract SBTBase is
     /**
      * @dev See {IERC721Metadata-tokenURI} need override.
      */
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        virtual
-        override
-        returns (string memory)
-    {
+    function tokenURI(
+        uint256 tokenId
+    ) public view virtual override returns (string memory) {
         _requireMinted(tokenId);
         return "";
     }
@@ -115,13 +94,9 @@ contract SBTBase is
         revert("SBT:non-approvable");
     }
 
-    function getApproved(uint256)
-        public
-        view
-        virtual
-        override
-        returns (address)
-    {
+    function getApproved(
+        uint256
+    ) public view virtual override returns (address) {
         return address(0);
     }
 
@@ -129,21 +104,14 @@ contract SBTBase is
         revert("SBT:non-approvable");
     }
 
-    function isApprovedForAll(address, address)
-        public
-        view
-        virtual
-        override
-        returns (bool)
-    {
+    function isApprovedForAll(
+        address,
+        address
+    ) public view virtual override returns (bool) {
         return false;
     }
 
-    function transferFrom(
-        address,
-        address,
-        uint256
-    ) public virtual override {
+    function transferFrom(address, address, uint256) public virtual override {
         revert("SBT:non-transferable");
     }
 
