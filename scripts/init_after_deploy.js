@@ -33,6 +33,10 @@ async function main() {
             const questMinterInstance = await ethers.getContractAt("QuestMinter", QuestMinterAddr,owner);
             await questMinterInstance.connect(owner).setSigner(MinterSigner);
             console.log('\nquestMinter setSigner', MinterSigner);
+
+            const badgeMinterInstance = await ethers.getContractAt("BadgeMinter", QuestMinterAddr,owner);
+            await badgeMinterInstance.connect(owner).setSigner(MinterSigner);
+            console.log('\nbadgeMinter setSigner', MinterSigner);
         }else{
             console.log('\nQuestMinter use deployer as signer');
         }
