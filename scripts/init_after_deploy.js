@@ -12,8 +12,8 @@ async function main() {
     // Badge 初始化
     {
         const badgeInstance = await ethers.getContractAt("Badge",BadgeAddr,owner);
-        await badgeInstance.connect(owner).setMinter(QuestMinterAddr, true);
-        console.log('\nBaddge setMinter', QuestMinterAddr);
+        await badgeInstance.connect(owner).setMinter(BadgeMinterAddr, true);
+        console.log('\nBaddge setMinter', BadgeMinterAddr);
     }
 
     // Quest 初始化
