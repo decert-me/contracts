@@ -122,6 +122,7 @@ module.exports = {
       optimismSepolia: process.env.OPTIMISM_ETHERSCAN_API_KEY,
       polygon: process.env.POLYGON_ETHERSCAN_API_KEY,
       arbitrumSepolia: process.env.ARBITRUM_ETHERSCAN_API_KEY,
+      arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY,
     },
     customChains: [
       {
